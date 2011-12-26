@@ -39,6 +39,7 @@ import qualified Command.DropUnused
 import qualified Command.Unlock
 import qualified Command.Lock
 import qualified Command.PreCommit
+import qualified Command.TweakFetch
 import qualified Command.Find
 import qualified Command.Whereis
 import qualified Command.Merge
@@ -73,6 +74,7 @@ cmds = concat
 	, Command.Unannex.def
 	, Command.Uninit.def
 	, Command.PreCommit.def
+	, Command.TweakFetch.def
 	, Command.Trust.def
 	, Command.Untrust.def
 	, Command.Semitrust.def

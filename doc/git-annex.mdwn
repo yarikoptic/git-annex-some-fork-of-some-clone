@@ -344,6 +344,11 @@ subdirectories).
   This is meant to be called from git's pre-commit hook. `git annex init`
   automatically creates a pre-commit hook using this.
 
+* tweak-fetch
+
+  This is meant ot be called from git's tweak-fetch hook. `git annex init`
+  automatically creates a tweak-fetch hook using this.
+
 * fromkey key file
 
   This plumbing-level command can be used to manually set up a file

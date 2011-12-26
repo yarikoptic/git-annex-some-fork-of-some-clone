@@ -24,12 +24,12 @@ initialize mdescription = do
 	prepUUID
 	Annex.Branch.create
 	setVersion
-	gitPreCommitHookWrite
+	gitHooksWrite
 	u <- getUUID
 	maybe (recordUUID u) (describeUUID u) mdescription
 
 uninitialize :: Annex ()
-uninitialize = gitPreCommitHookUnWrite
+uninitialize = gitHooksUnWrite
 
 {- Will automatically initialize if there is already a git-annex
    branch from somewhere. Otherwise, require a manual init
@@ -44,37 +44,40 @@ ensureInitialized = getVersion >>= maybe needsinit checkVersion
 				then initialize Nothing
 				else error "First run: git-annex init"
 
-{- set up a git pre-commit hook, if one is not already present -}
-gitPreCommitHookWrite :: Annex ()
-gitPreCommitHookWrite = unlessBare $ do
-	hook <- preCommitHook
-	exists <- liftIO $ doesFileExist hook
+{- set up git hooks, if not already present -}
+gitHooksWrite :: Annex ()
+gitHooksWrite = unlessBare $ forM_ hooks $ \(hook, content) -> do
+	file <- hookFile hook
+	exists <- liftIO $ doesFileExist file
 	if exists
-		then warning $ "pre-commit hook (" ++ hook ++ ") already exists, not configuring"
+		then warning $ hook ++ " hook (" ++ file ++ ") already exists, not configuring"
 		else liftIO $ do
-			viaTmp writeFile hook preCommitScript
-			p <- getPermissions hook
-			setPermissions hook $ p {executable = True}
+			viaTmp writeFile file content
+			p <- getPermissions file
+			setPermissions file $ p {executable = True}
 
-gitPreCommitHookUnWrite :: Annex ()
-gitPreCommitHookUnWrite = unlessBare $ do
-	hook <- preCommitHook
-	whenM (liftIO $ doesFileExist hook) $ do
-		c <- liftIO $ readFile hook
-		if c == preCommitScript
-			then liftIO $ removeFile hook
-			else warning $ "pre-commit hook (" ++ hook ++ 
+gitHooksUnWrite :: Annex ()
+gitHooksUnWrite = unlessBare $ forM_ hooks $ \(hook, content) -> do
+	file <- hookFile hook
+	whenM (liftIO $ doesFileExist file) $ do
+		c <- liftIO $ readFile file
+		if c == content
+			then liftIO $ removeFile file
+			else warning $ hook ++ " hook (" ++ file ++ 
 				") contents modified; not deleting." ++
 				" Edit it to remove call to git annex."
 
 unlessBare :: Annex () -> Annex ()
 unlessBare = unlessM $ fromRepo $ Git.repoIsLocalBare
 
-preCommitHook :: Annex FilePath
-preCommitHook = (</>) <$> fromRepo Git.gitDir <*> pure "hooks/pre-commit"
+hookFile :: FilePath -> Annex FilePath
+hookFile f = (</>) <$> fromRepo Git.gitDir <*> pure ("hooks/" ++ f)
 
-preCommitScript :: String
-preCommitScript = 
-	"#!/bin/sh\n" ++
-	"# automatically configured by git-annex\n" ++ 
-	"git annex pre-commit .\n"
+hooks :: [(String, String)]
+hooks = [ ("pre-commit", hookscript "git annex pre-commit .")
+	, ("tweak-fetch", hookscript "git annex tweak-fetch")
+	]
+	where
+		hookscript s = "#!/bin/sh\n" ++
+			"# automatically configured by git-annex\n" ++
+			s ++ "\n";

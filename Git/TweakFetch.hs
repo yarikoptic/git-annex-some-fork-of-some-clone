@@ -5,7 +5,10 @@
  - Licensed under the GNU GPL version 3 or higher.
  -}
 
-module Git.TweakFetch (runHook, runHookUnsafe, FetchedRef(..)) where
+module Git.TweakFetch (runHook, FetchedRef(..)) where
+
+import Data.Either (rights)
+import System.Posix.IO
 
 import Common
 import Git
@@ -26,23 +29,22 @@ data FetchedRef = FetchedRef
  - lines are passed through unchanged. -}
 type HookLine = Either String FetchedRef
 
-{- Runs the hook, allowing lines to be mutated, but never be discarded. -}
-runHook :: (FetchedRef -> IO FetchedRef) -> IO ()
-runHook mutate = runHook' go id
+{- Runs the hook, allowing lines to be mutated, but never be discarded.
+ - Returns same FetchedRefs that are output by the hook, for further use. -}
+runHook :: (FetchedRef -> IO FetchedRef) -> IO [FetchedRef]
+runHook mutate = do
+	ls <- mapM go =<< input
+	output ls
+
+	-- Nothing more should be output to stdout; only hook output
+	-- is accepted by git. Redirect stdout to stderr.
+	hFlush stdout
+	_ <- liftIO $ dupTo stdError stdOutput
+
+	return $ rights ls
 	where
 		go u@(Left _) = return u
 		go (Right r) = Right <$> catchDefaultIO (mutate r) r
-
-{- Runs the hook, allowing lines to be mutated, discarded, or produce
- - multiple output lines. -}
-runHookUnsafe :: (FetchedRef -> IO [FetchedRef]) -> IO ()
-runHookUnsafe mutate = runHook' go concat
-	where
-		go u@(Left _) = return [u]
-		go (Right r) = map Right <$> catchDefaultIO (mutate r) [r]
-
-runHook' :: (HookLine -> IO b) -> ([b] -> [HookLine]) -> IO ()
-runHook' mutate reduce = output . reduce =<< mapM mutate =<< input
 
 input :: IO [HookLine]
 input = map parseLine . lines <$> getContents
