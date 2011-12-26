@@ -21,3 +21,13 @@ There is already a Git.CatFile library that can do this easily. --[[Joey]]
 Merging used to use memory proportional to the size of the diff. It now
 streams data, running in constant space. This probably sped it up a lot,
 as there's much less allocation and GC action. --[[Joey]] 
+
+----
+
+Another option is to stop doing the automatic merging. Once the git
+tweak-fetch hook is widely available, the automatic mergcing won't be
+needed when pulling from remotes. The only remaining use would be if
+a sibling git-annex branch appeared in some other way, and git annex merge
+could be manually run in such an unlikely case. Making this change
+would require a hard dependency on an appropriate version of git, and a
+version number bump to ensure the tweak-fetch hooks are set up. --[[Joey]]
