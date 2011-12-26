@@ -28,14 +28,6 @@ Clone that to the laptop:
 	init laptop ok
         laptop$ 
 
-Merge the `git-annex` repository (this is the bit that is often
-overlooked!):
-
-	laptop$ git annex merge	
-	merge . (merging "origin/git-annex" into git-annex...)
-	ok
-	laptop$ 
-
 Add some content:
 
 	laptop$ git annex addurl http://kitenet.net/~joey/screencasts/git-annex_coding_in_haskell.ogg
