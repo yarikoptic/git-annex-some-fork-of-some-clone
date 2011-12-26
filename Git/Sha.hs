@@ -28,8 +28,11 @@ extractSha s
 		len = length s
 		s' = firstLine s
 		val v
-			| all (`elem` "1234567890ABCDEFabcdef") v = Just $ Ref v
+			| isSha v = Just $ Ref v
 			| otherwise = Nothing
+
+isSha :: String -> Bool
+isSha v = all (`elem` "1234567890ABCDEFabcdef") v && length v == shaSize
 
 {- Size of a git sha. -}
 shaSize :: Int
