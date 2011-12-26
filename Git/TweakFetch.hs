@@ -1,11 +1,11 @@
-{- git post-fetch hook support
+{- git tweak-fetch hook support
  -
  - Copyright 2011 Joey Hess <joey@kitenet.net>
  -
  - Licensed under the GNU GPL version 3 or higher.
  -}
 
-module Git.PostFetch (runHook, runHookUnsafe, FetchedRef(..)) where
+module Git.TweakFetch (runHook, runHookUnsafe, FetchedRef(..)) where
 
 import Common
 import Git
@@ -19,7 +19,7 @@ data FetchedRef = FetchedRef
 	}
 	deriving (Show)
 
-{- Each line fed to the post-fetch hook should represent a ref that is
+{- Each line fed to the tweak-fetch hook should represent a ref that is
  - being updated. It's important that the hook always outputs every line
  - that is fed into it (possibly modified), otherwise incoming refs will
  - not be stored. So to avoid breaking if the format changes, unparsable
