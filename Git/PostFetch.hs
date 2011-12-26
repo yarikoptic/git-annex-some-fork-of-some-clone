@@ -5,11 +5,10 @@
  - Licensed under the GNU GPL version 3 or higher.
  -}
 
-module Git.PostFetch (runHook, FetchedRef(..)) where
+module Git.PostFetch (runHook, runHookUnsafe, FetchedRef(..)) where
 
 import Common
 import Git
-import Git.Types
 import Git.Sha
 
 data FetchedRef = FetchedRef
@@ -27,14 +26,24 @@ data FetchedRef = FetchedRef
  - lines are stored as-is. -}
 type HookLine = Either String FetchedRef
 
-{- Runs the hook, allowing lines to be mutated and even produce more
- - than one output line, but never be discarded. Unparsable lines are
- - passed through unchanged. -}
-runHook :: (FetchedRef -> IO [FetchedRef]) -> IO ()
-runHook mutate = output . concat =<< mapM go =<< input
+{- Runs the hook, allowing lines to be mutated, but never be discarded.
+ - Unparsable lines are passed through unchanged. -}
+runHook :: (FetchedRef -> IO FetchedRef) -> IO ()
+runHook mutate = runHook' go id
+	where
+		go u@(Left _) = return u
+		go (Right r) = Right <$> catchDefaultIO (mutate r) r
+
+{- Runs the hook, allowing lines to be mutated, discarded, or produce
+ - multiple output lines. Unparsable lines are passed through unchanged. -}
+runHookUnsafe :: (FetchedRef -> IO [FetchedRef]) -> IO ()
+runHookUnsafe mutate = runHook' go concat
 	where
 		go u@(Left _) = return [u]
 		go (Right r) = map Right <$> catchDefaultIO (mutate r) [r]
+
+runHook' :: (HookLine -> IO b) -> ([b] -> [HookLine]) -> IO ()
+runHook' mutate reduce = output . reduce =<< mapM mutate =<< input
 
 input :: IO [HookLine]
 input = map parseLine . lines <$> getContents
