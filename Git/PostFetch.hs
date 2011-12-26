@@ -5,7 +5,7 @@
  - Licensed under the GNU GPL version 3 or higher.
  -}
 
-module Git.PostFetch where
+module Git.PostFetch (runHook, FetchedRef(..)) where
 
 import Common
 import Git
@@ -13,7 +13,9 @@ import Git.Types
 import Git.Sha
 
 {- Each line fed to the post-fetch hook should represent a ref that is
- - being updated. To avoid breaking if the format changes, unparsable
+ - being updated. It's important that the hook always outputs every line
+ - that is fed into it (possibly modified), otherwise incoming refs will
+ - not be stored. So to avoid breaking if the format changes, unparsable
  - lines are stored as-is. -}
 data FetchedRef = Unparsable String | FetchedRef
 	{ sha :: Sha
@@ -22,6 +24,15 @@ data FetchedRef = Unparsable String | FetchedRef
 	, local :: Ref
 	}
 	deriving (Show)
+
+{- Runs the hook, allowing lines to be mutated and even produce more
+ - than one output line, but never be discarded. Unparsable lines are
+ - passed through unchanged. -}
+runHook :: (FetchedRef -> IO [FetchedRef]) -> IO ()
+runHook mutate = input >>= mapM callmutate >>= output . concat
+	where
+		callmutate u@(Unparsable _) = return [u]
+		callmutate f = catchDefaultIO (mutate f) [f]
 
 input :: IO [FetchedRef]
 input = map parseLine . lines <$> getContents
