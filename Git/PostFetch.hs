@@ -23,11 +23,10 @@ data FetchedRef = FetchedRef
  - being updated. It's important that the hook always outputs every line
  - that is fed into it (possibly modified), otherwise incoming refs will
  - not be stored. So to avoid breaking if the format changes, unparsable
- - lines are stored as-is. -}
+ - lines are passed through unchanged. -}
 type HookLine = Either String FetchedRef
 
-{- Runs the hook, allowing lines to be mutated, but never be discarded.
- - Unparsable lines are passed through unchanged. -}
+{- Runs the hook, allowing lines to be mutated, but never be discarded. -}
 runHook :: (FetchedRef -> IO FetchedRef) -> IO ()
 runHook mutate = runHook' go id
 	where
@@ -35,7 +34,7 @@ runHook mutate = runHook' go id
 		go (Right r) = Right <$> catchDefaultIO (mutate r) r
 
 {- Runs the hook, allowing lines to be mutated, discarded, or produce
- - multiple output lines. Unparsable lines are passed through unchanged. -}
+ - multiple output lines. -}
 runHookUnsafe :: (FetchedRef -> IO [FetchedRef]) -> IO ()
 runHookUnsafe mutate = runHook' go concat
 	where
