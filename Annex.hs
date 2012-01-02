@@ -22,6 +22,7 @@ module Annex (
 	fromRepo,
 ) where
 
+import Control.Monad.IO.Control
 import Control.Monad.State
 import Control.Monad.Trans.Control (StM, MonadBaseControl, liftBaseWith, restoreM)
 import Control.Monad.Base (liftBase, MonadBase)
@@ -46,21 +47,11 @@ newtype Annex a = Annex { runAnnex :: StateT AnnexState IO a }
 	deriving (
 		Monad,
 		MonadIO,
+		MonadControlIO,
 		MonadState AnnexState,
 		Functor,
 		Applicative
 	)
-
-instance MonadBase IO Annex where
-	liftBase = Annex . liftBase
-
-instance MonadBaseControl IO Annex where
-	newtype StM Annex a = StAnnex (StM (StateT AnnexState IO) a)
-	liftBaseWith f = Annex $ liftBaseWith $ \runInIO ->
-		f $ liftM StAnnex . runInIO . runAnnex
-	restoreM = Annex . restoreM . unStAnnex
-		where
-			unStAnnex (StAnnex st) = st
 
 data OutputType = NormalOutput | QuietOutput | JSONOutput
 
