@@ -24,8 +24,6 @@ module Annex (
 
 import Control.Monad.IO.Control
 import Control.Monad.State
-import Control.Monad.Trans.Control (StM, MonadBaseControl, liftBaseWith, restoreM)
-import Control.Monad.Base (liftBase, MonadBase)
 
 import Common
 import qualified Git
