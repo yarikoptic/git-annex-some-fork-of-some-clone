@@ -1,3 +1,35 @@
+git-annex (3.20120107) UNRELEASED; urgency=low
+
+  * log: Add --gource mode, which generates output usable by gource.
+
+ -- Joey Hess <joeyh@debian.org>  Sat, 07 Jan 2012 18:12:09 -0400
+
+git-annex (3.20120106) unstable; urgency=low
+
+  * Support unescaped repository urls, like git does.
+  * log: New command that displays the location log for files,
+    showing each repository they were added to and removed from.
+  * Fix overbroad gpg --no-tty fix from last release.
+
+ -- Joey Hess <joeyh@debian.org>  Sat, 07 Jan 2012 13:16:23 -0400
+
+git-annex (3.20120105) unstable; urgency=low
+
+  * Added annex-web-options configuration settings, which can be
+    used to provide parameters to whichever of wget or curl git-annex uses
+    (depends on which is available, but most of their important options
+    suitable for use here are the same).
+  * Dotfiles, and files inside dotdirs are not added by "git annex add"
+    unless the dotfile or directory is explicitly listed. So "git annex add ."
+    will add all untracked files in the current directory except for those in
+    dotdirs.
+  * Added quickcheck to build dependencies, and fail if test suite cannot be
+    built.
+  * fsck: Do backend-specific check before checking numcopies is satisfied.
+  * Run gpg with --no-tty. Closes: #654721
+
+ -- Joey Hess <joeyh@debian.org>  Thu, 05 Jan 2012 13:44:12 -0400
+
 git-annex (3.20111231) unstable; urgency=low
 
   * sync: Improved to work well without a central bare repository.

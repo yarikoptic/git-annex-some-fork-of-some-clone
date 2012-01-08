@@ -20,6 +20,7 @@ import qualified Git
 import qualified Git.LsFiles as LsFiles
 import qualified Git.CheckAttr
 import qualified Limit
+import qualified Option
 
 seekHelper :: ([FilePath] -> Git.Repo -> IO [FilePath]) -> [FilePath] -> Annex [FilePath]
 seekHelper a params = do
@@ -44,16 +45,18 @@ withBackendFilesInGit a params = do
 	files <- seekHelper LsFiles.inRepo params
 	prepBackendPairs a files
 
-withFilesMissing :: (String -> CommandStart) -> CommandSeek
-withFilesMissing a params = prepFiltered a $ liftIO $ filterM missing params
-	where
-		missing = liftM not . doesFileExist
-
 withFilesNotInGit :: (BackendFile -> CommandStart) -> CommandSeek
 withFilesNotInGit a params = do
-	force <- Annex.getState Annex.force
-	newfiles <- seekHelper (LsFiles.notInRepo force) params
-	prepBackendPairs a newfiles
+	{- dotfiles are not acted on unless explicitly listed -}
+	files <- filter (not . dotfile) <$> seek ps
+	dotfiles <- if null dotps then return [] else seek dotps
+	prepBackendPairs a $ preserveOrder params (files++dotfiles)
+	where
+		(dotps, ps) = partition dotfile params
+		seek l = do
+			force <- Annex.getState Annex.force
+			g <- gitRepo
+			liftIO $ (\p -> LsFiles.notInRepo force p g) l
 
 withWords :: ([String] -> CommandStart) -> CommandSeek
 withWords a params = return [a params]
@@ -84,6 +87,22 @@ withKeys :: (Key -> CommandStart) -> CommandSeek
 withKeys a params = return $ map (a . parse) params
 	where
 		parse p = fromMaybe (error "bad key") $ readKey p
+
+withValue :: Annex v -> (v -> CommandSeek) -> CommandSeek
+withValue v a params = do
+	r <- v
+	a r params
+
+{- Modifies a seek action using the value of a field option, which is fed into
+ - a conversion function, and then is passed into the seek action.
+ - This ensures that the conversion function only runs once.
+ -}
+withField :: Option -> (Maybe String -> Annex a) -> (a -> CommandSeek) -> CommandSeek
+withField option converter = withValue $
+	converter =<< Annex.getField (Option.name option)
+
+withFlag :: Option -> (Bool -> CommandSeek) -> CommandSeek
+withFlag option = withValue $ Annex.getFlag (Option.name option)
 
 withNothing :: CommandStart -> CommandSeek
 withNothing a [] = return [a]
