@@ -1,65 +1,116 @@
-{- git-annex remote access with ssh
+{- git-annex ssh interface, with connection caching
  -
- - Copyright 2011 Joey Hess <joey@kitenet.net>
+ - Copyright 2012 Joey Hess <joey@kitenet.net>
  -
  - Licensed under the GNU GPL version 3 or higher.
  -}
 
-module Annex.Ssh where
+module Annex.Ssh (
+	sshParams,
+	sshCleanup,
+) where
 
-import Common
+import qualified Data.Map as M
+
+import Common.Annex
+import Annex.LockPool
 import qualified Git
-import qualified Git.Url
-import Types
-import Config
-import Annex.UUID
+import qualified Git.Config
 
-{- Generates parameters to ssh to a repository's host and run a command.
- - Caller is responsible for doing any neccessary shellEscaping of the
- - passed command. -}
-sshToRepo :: Git.Repo -> [CommandParam] -> Annex [CommandParam]
-sshToRepo repo sshcmd = do
-	s <- getConfig repo "ssh-options" ""
-	let sshoptions = map Param (words s)
-	let sshport = case Git.Url.port repo of
-		Nothing -> []
-		Just p -> [Param "-p", Param (show p)]
-	let sshhost = Param $ Git.Url.hostuser repo
-	return $ sshoptions ++ sshport ++ [sshhost] ++ sshcmd
-
-{- Generates parameters to run a git-annex-shell command on a remote
- - repository. -}
-git_annex_shell :: Git.Repo -> String -> [CommandParam] -> Annex (Maybe (FilePath, [CommandParam]))
-git_annex_shell r command params
-	| not $ Git.repoIsUrl r = return $ Just (shellcmd, shellopts)
-	| Git.repoIsSsh r = do
-		uuid <- getRepoUUID r
-		sshparams <- sshToRepo r [Param $ sshcmd uuid ]
-		return $ Just ("ssh", sshparams)
-	| otherwise = return Nothing
+{- Generates parameters to ssh to a given host (or user@host) on a given
+ - port, with connection caching. -}
+sshParams :: (String, Maybe Integer) -> [CommandParam] -> Annex [CommandParam]
+sshParams (host, port) opts = go =<< sshInfo (host, port)
 	where
-		dir = Git.workTree r
-		shellcmd = "git-annex-shell"
-		shellopts = Param command : File dir : params
-		sshcmd uuid = unwords $
-			shellcmd : map shellEscape (toCommand shellopts) ++
-			uuidcheck uuid
-		uuidcheck NoUUID = []
-		uuidcheck (UUID u) = ["--uuid", u]
+		go (Nothing, params) = ret params
+		go (Just socketfile, params) = do
+			cleanstale
+			liftIO $ createDirectoryIfMissing True $ parentDir socketfile
+			lockFile $ socket2lock socketfile
+			ret params
+		ret ps = return $ ps ++ opts ++ portParams port ++ [Param host]
+		-- If the lock pool is empty, this is the first ssh of this
+		-- run. There could be stale ssh connections hanging around
+		-- from a previous git-annex run that was interrupted.
+		cleanstale = whenM (null . filter isLock . M.keys <$> getPool) $
+			sshCleanup
 
-{- Uses a supplied function (such as boolSystem) to run a git-annex-shell
- - command on a remote.
- -
- - Or, if the remote does not support running remote commands, returns
- - a specified error value. -}
-onRemote 
-	:: Git.Repo
-	-> (FilePath -> [CommandParam] -> IO a, a)
-	-> String
-	-> [CommandParam]
-	-> Annex a
-onRemote r (with, errorval) command params = do
-	s <- git_annex_shell r command params
-	case s of
-		Just (c, ps) -> liftIO $ with c ps
-		Nothing -> return errorval
+sshInfo :: (String, Maybe Integer) -> Annex (Maybe FilePath, [CommandParam])
+sshInfo (host, port) = do
+	caching <- Git.configTrue <$> fromRepo (Git.Config.get "annex.sshcaching" "true")
+	if caching
+		then do
+			dir <- fromRepo $ gitAnnexSshDir
+			let socketfile = dir </> hostport2socket host port
+		 	return $ (Just socketfile, cacheParams socketfile)
+		else return (Nothing, [])
+
+cacheParams :: FilePath -> [CommandParam]
+cacheParams socketfile =
+	[ Param "-S", Param socketfile
+	, Params "-o ControlMaster=auto -o ControlPersist=yes"
+	]
+
+portParams :: Maybe Integer -> [CommandParam]
+portParams Nothing = []
+portParams (Just port) = [Param "-p", Param $ show port]
+
+{- Stop any unused ssh processes. -}
+sshCleanup :: Annex ()
+sshCleanup = do
+	dir <- fromRepo $ gitAnnexSshDir
+	liftIO $ createDirectoryIfMissing True dir
+	sockets <- filter (not . isLock) <$> liftIO (dirContents dir)
+	forM_ sockets cleanup
+	where
+		cleanup socketfile = do
+			-- Drop any shared lock we have, and take an
+			-- exclusive lock, without blocking. If the lock
+			-- succeeds, nothing is using this ssh, and it can
+			-- be stopped.
+			let lockfile = socket2lock socketfile
+			unlockFile lockfile
+			fd <- liftIO $ openFd lockfile ReadWrite (Just stdFileMode) defaultFileFlags
+			v <- liftIO $ tryIO $
+				setLock fd (WriteLock, AbsoluteSeek, 0, 0)
+			case v of
+				Left _ -> return ()
+				Right _ -> stopssh socketfile
+			liftIO $ closeFd fd
+		stopssh socketfile = do
+			let (host, port) = socket2hostport socketfile
+			(_, params) <- sshInfo (host, port)
+			_ <- liftIO $ do
+				-- "ssh -O stop" is noisy on stderr even with -q
+				let cmd = unwords $ toCommand $
+					[ Params "-O stop"
+					] ++ params ++ [Param host]
+				_ <- boolSystem "sh"
+					[ Param "-c"
+					, Param $ "ssh " ++ cmd ++ " >/dev/null 2>/dev/null"
+					]
+				--try $ removeFile socketfile
+				return ()
+			-- Cannot remove the lock file; other processes may
+			-- be waiting on our exclusive lock to use it.
+			return ()
+
+hostport2socket :: String -> Maybe Integer -> FilePath
+hostport2socket host Nothing = host
+hostport2socket host (Just port) = host ++ "!" ++ show port
+
+socket2hostport :: FilePath -> (String, Maybe Integer)
+socket2hostport socket
+	| null p = (h, Nothing)
+	| otherwise = (h, readish p)
+	where
+		(h, p) = separate (== '!') $ takeFileName socket
+
+socket2lock :: FilePath -> FilePath
+socket2lock socket = socket ++ lockExt
+
+isLock :: FilePath -> Bool
+isLock f = lockExt `isSuffixOf` f
+
+lockExt :: String
+lockExt = ".lock"

@@ -1,8 +1,85 @@
-git-annex (3.20120107) UNRELEASED; urgency=low
+git-annex (3.20120124) UNRELEASED; urgency=low
+
+  * Use the haskell IfElse library.
+  * Avoid repeated location log commits when a remote is receiving files.
+    Done by adding a oneshot mode, in which location log changes are
+    written to the journal, but not committed. Taking advantage of
+    git-annex's existing ability to recover in this situation. This is
+    used by git-annex-shell and other places where changes are made to
+    a remote's location log.
+  * S3: Fix irrefutable pattern failure when accessing encrypted S3
+    credentials.
+  * addurl: Added a --file option, which can be used to specify what
+    file the url is added to. This can be used to override the default
+    filename that is used when adding an url, which is based on the url.
+    Or, when the file already exists, the url is recorded as another
+    location of the file.
+  * addurl: Normalize badly encoded urls.
+  * Fix teardown of stale cached ssh connections.
+  * When checking that an url has a key, verify that the Content-Length,
+    if available, matches the size of the key.
+  * addurl --fast: Verifies that the url can be downloaded (only getting
+    its head), and records the size in the key.
+  * Fixed to use the strict state monad, to avoid leaking all kinds of memory
+    due to lazy state update thunks when adding/fixing many files.
+  * Fixed a memory leak due to excessive strictness when committing journal
+    files.
+  * whereis: Prints the urls of files that the web special remote knows about.
+
+ -- Joey Hess <joeyh@debian.org>  Tue, 24 Jan 2012 16:21:55 -0400
+
+git-annex (3.20120123) unstable; urgency=low
+
+  * fsck --from: Fscking a remote is now supported. It's done by retrieving
+    the contents of the specified files from the remote, and checking them,
+    so can be an expensive operation. Still, if the remote is a special
+    remote, or a git repository that you cannot run fsck in locally, it's
+    nice to have the ability to fsck it.
+  * If you have any directory special remotes, now would be a good time to
+    fsck them, in case you were hit by the data loss bug fixed in the
+    previous release!
+  * fsck --from remote --fast: Avoids expensive file transfers, at the
+    expense of not checking file size and/or contents.
+  * Ssh connection caching is now enabled automatically by git-annex.
+    Only one ssh connection is made to each host per git-annex run, which
+    can speed some things up a lot, as well as avoiding repeated password
+    prompts. Concurrent git-annex processes also share ssh connections.
+    Cached ssh connections are shut down when git-annex exits.
+  * To disable the ssh caching (if for example you have your own broader
+    ssh caching configuration), set annex.sshcaching=false.
+
+ -- Joey Hess <joeyh@debian.org>  Mon, 23 Jan 2012 13:48:48 -0400
+
+git-annex (3.20120116) unstable; urgency=medium
+
+  * Fix data loss bug in directory special remote, when moving a file
+    to the remote failed, and partially transferred content was left
+    behind in the directory, re-running the same move would think it
+    succeeded and delete the local copy.
+
+ -- Joey Hess <joeyh@debian.org>  Mon, 16 Jan 2012 16:43:45 -0400
+
+git-annex (3.20120115) unstable; urgency=low
+
+  * Add a sanity check for bad StatFS results. On architectures
+    where StatFS does not currently work (s390, mips, powerpc, sparc),
+    this disables the diskreserve checking code, and attempting to
+    configure an annex.diskreserve will result in an error.
+  * Fix QuickCheck dependency in cabal file.
+  * Minor optimisations.
+
+ -- Joey Hess <joeyh@debian.org>  Sun, 15 Jan 2012 13:54:20 -0400
+
+git-annex (3.20120113) unstable; urgency=low
 
   * log: Add --gource mode, which generates output usable by gource.
+  * map: Fix display of remote repos
+  * Add annex-trustlevel configuration settings, which can be used to 
+    override the trust level of a remote.
+  * git-annex, git-union-merge: Support GIT_DIR and GIT_WORK_TREE.
+  * Add libghc-testpack-dev to build depends on all arches.
 
- -- Joey Hess <joeyh@debian.org>  Sat, 07 Jan 2012 18:12:09 -0400
+ -- Joey Hess <joeyh@debian.org>  Fri, 13 Jan 2012 15:35:17 -0400
 
 git-annex (3.20120106) unstable; urgency=low
 

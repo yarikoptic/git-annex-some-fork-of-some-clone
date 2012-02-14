@@ -22,9 +22,9 @@ module Annex.Content (
 	getKeysPresent,
 	saveState,
 	downloadUrl,
+	preseedTmp,
 ) where
 
-import System.IO.Error (try)
 import Control.Exception (bracket_)
 import System.Posix.Types
 
@@ -40,6 +40,7 @@ import Utility.FileMode
 import qualified Utility.Url as Url
 import Types.Key
 import Utility.DataUnits
+import Utility.CopyFile
 import Config
 import Annex.Exception
 
@@ -77,7 +78,7 @@ lockContent key a = do
 	where
 		lock Nothing = return Nothing
 		lock (Just l) = do
-			v <- try $ setLock l (WriteLock, AbsoluteSeek, 0, 0)
+			v <- tryIO $ setLock l (WriteLock, AbsoluteSeek, 0, 0)
 			case v of
 				Left _ -> error "content is locked"
 				Right _ -> return $ Just l
@@ -177,6 +178,7 @@ checkDiskSpace' adjustment key = do
 	r <- getConfig g "diskreserve" ""
 	let reserve = fromMaybe megabyte $ readSize dataUnits r
 	stats <- liftIO $ getFileSystemStats (gitAnnexDir g)
+	sanitycheck r stats
 	case (stats, keySize key) of
 		(Nothing, _) -> return ()
 		(_, Nothing) -> return ()
@@ -189,7 +191,17 @@ checkDiskSpace' adjustment key = do
 		needmorespace n = unlessM (Annex.getState Annex.force) $
 			error $ "not enough free space, need " ++ 
 				roughSize storageUnits True n ++
-				" more (use --force to override this check or adjust annex.diskreserve)"
+				" more" ++ forcemsg
+		forcemsg = " (use --force to override this check or adjust annex.diskreserve)"
+		sanitycheck r stats
+			| not (null r) && isNothing stats = do
+				unlessM (Annex.getState Annex.force) $
+					error $ "You have configured a diskreserve of "
+						++ r ++
+						" but disk space checking is not working"
+						++ forcemsg
+				return ()
+			| otherwise = return ()
 
 {- Moves a file into .git/annex/objects/
  -
@@ -278,11 +290,16 @@ getKeysPresent' dir = do
 			let files = concat contents
 			return $ mapMaybe (fileKey . takeFileName) files
 
-{- Things to do to record changes to content. -}
-saveState :: Annex ()
-saveState = do
+{- Things to do to record changes to content when shutting down.
+ -
+ - It's acceptable to avoid committing changes to the branch,
+ - especially if performing a short-lived action.
+ -}
+saveState :: Bool -> Annex ()
+saveState oneshot = do
 	Annex.Queue.flush False
-	Annex.Branch.commit "update"
+	unless oneshot $
+		Annex.Branch.commit "update"
 
 {- Downloads content from any of a list of urls. -}
 downloadUrl :: [Url.URLString] -> FilePath -> Annex Bool
@@ -290,3 +307,21 @@ downloadUrl urls file = do
 	g <- gitRepo
 	o <- map Param . words <$> getConfig g "web-options" ""
 	liftIO $ anyM (\u -> Url.download u o file) urls
+
+{- Copies a key's content, when present, to a temp file.
+ - This is used to speed up some rsyncs. -}
+preseedTmp :: Key -> FilePath -> Annex Bool
+preseedTmp key file = go =<< inAnnex key
+	where
+		go False = return False
+		go True = do
+			ok <- copy
+			when ok $ liftIO $ allowWrite file
+			return ok
+		copy = do
+			present <- liftIO $ doesFileExist file
+			if present
+				then return True
+				else do
+					s <- inRepo $ gitAnnexLocation key
+					liftIO $ copyFileExternal s file

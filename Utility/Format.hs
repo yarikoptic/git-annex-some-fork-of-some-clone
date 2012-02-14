@@ -37,9 +37,11 @@ data Frag = Const String | Var String Justify
 data Justify = LeftJustified Int | RightJustified Int | UnJustified
 	deriving (Show)
 
+type Variables = M.Map String String
+
 {- Expands a Format using some variables, generating a formatted string.
  - This can be repeatedly called, efficiently. -}
-format :: Format -> M.Map String String -> String
+format :: Format -> Variables -> String
 format f vars = concatMap expand f
 	where
 		expand (Const s) = s
@@ -86,7 +88,7 @@ gen = filter (not . empty) . fuse [] . scan [] . decode_c
 			| c == '}' = foundvar f var (readjustify $ reverse p) cs
 			| otherwise = inpad (c:p) f var cs
 		inpad p f var [] = Const (novar $ p++";"++var) : f
-		readjustify = getjustify . fromMaybe 0 . readMaybe
+		readjustify = getjustify . fromMaybe 0 . readish
 		getjustify i
 			| i == 0 = UnJustified
 			| i < 0 = LeftJustified (-1 * i)

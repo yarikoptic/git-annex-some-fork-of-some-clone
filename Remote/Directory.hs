@@ -41,9 +41,11 @@ gen r u c = do
 			name = Git.repoDescribe r,
  			storeKey = store dir,
 			retrieveKeyFile = retrieve dir,
+			retrieveKeyFileCheap = retrieveCheap dir,
 			removeKey = remove dir,
 			hasKey = checkPresent dir,
 			hasKeyCheap = True,
+			whereisKey = Nothing,
 			config = Nothing,
 			repo = r,
 			remotetype = remote
@@ -54,8 +56,8 @@ directorySetup u c = do
 	-- verify configuration is sane
 	let dir = fromMaybe (error "Specify directory=") $
 		M.lookup "directory" c
-	liftIO $ doesDirectoryExist dir
-		>>! error $ "Directory does not exist: " ++ dir
+	liftIO $ unlessM (doesDirectoryExist dir) $
+		error $ "Directory does not exist: " ++ dir
 	c' <- encryptionSetup c
 
 	-- The directory is stored in git config, not in this remote's
@@ -98,17 +100,23 @@ storeEncrypted d (cipher, enck) k = do
 storeHelper :: FilePath -> Key -> (FilePath -> IO Bool) -> IO Bool
 storeHelper d key a = do
 	let dest = Prelude.head $ locations d key
+	let tmpdest = dest ++ ".tmp"
 	let dir = parentDir dest
 	createDirectoryIfMissing True dir
 	allowWrite dir
-	ok <- a dest
+	ok <- a tmpdest
 	when ok $ do
+		renameFile tmpdest dest
 		preventWrite dest
 		preventWrite dir
 	return ok
 
 retrieve :: FilePath -> Key -> FilePath -> Annex Bool
 retrieve d k f = liftIO $ withStoredFile d k $ \file -> copyFileExternal file f
+
+retrieveCheap :: FilePath -> Key -> FilePath -> Annex Bool
+retrieveCheap d k f = liftIO $ withStoredFile d k $ \file ->
+	catchBoolIO $ createSymbolicLink file f >> return True
 
 retrieveEncrypted :: FilePath -> (Cipher, Key) -> FilePath -> Annex Bool
 retrieveEncrypted d (cipher, enck) f =

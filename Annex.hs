@@ -27,19 +27,20 @@ module Annex (
 ) where
 
 import Control.Monad.IO.Control
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 import Common
 import qualified Git
 import qualified Git.Config
 import Git.CatFile
+import Git.CheckAttr
 import qualified Git.Queue
 import Types.Backend
 import qualified Types.Remote
 import Types.Crypto
 import Types.BranchState
 import Types.TrustLevel
-import Types.UUID
+import Utility.State
 import qualified Utility.Matcher
 import qualified Data.Map as M
 
@@ -70,12 +71,14 @@ data AnnexState = AnnexState
 	, auto :: Bool
 	, branchstate :: BranchState
 	, catfilehandle :: Maybe CatFileHandle
+	, checkattrhandle :: Maybe CheckAttrHandle
 	, forcebackend :: Maybe String
 	, forcenumcopies :: Maybe Int
 	, limit :: Matcher (FilePath -> Annex Bool)
-	, forcetrust :: [(UUID, TrustLevel)]
+	, forcetrust :: TrustMap
 	, trustmap :: Maybe TrustMap
 	, ciphers :: M.Map EncryptedCipher Cipher
+	, lockpool :: M.Map FilePath Fd
 	, flags :: M.Map String Bool
 	, fields :: M.Map String String
 	}
@@ -92,12 +95,14 @@ newState gitrepo = AnnexState
 	, auto = False
 	, branchstate = startBranchState
 	, catfilehandle = Nothing
+	, checkattrhandle = Nothing
 	, forcebackend = Nothing
 	, forcenumcopies = Nothing
 	, limit = Left []
-	, forcetrust = []
+	, forcetrust = M.empty
 	, trustmap = Nothing
 	, ciphers = M.empty
+	, lockpool = M.empty
 	, flags = M.empty
 	, fields = M.empty
 	}
@@ -111,18 +116,6 @@ run :: AnnexState -> Annex a -> IO (a, AnnexState)
 run s a = runStateT (runAnnex a) s
 eval :: AnnexState -> Annex a -> IO a
 eval s a = evalStateT (runAnnex a) s
-
-{- Gets a value from the internal state, selected by the passed value
- - constructor. -}
-getState :: (AnnexState -> a) -> Annex a
-getState = gets
-
-{- Applies a state mutation function to change the internal state. 
- -
- - Example: changeState $ \s -> s { output = QuietOutput }
- -}
-changeState :: (AnnexState -> AnnexState) -> Annex ()
-changeState = modify
 
 {- Sets a flag to True -}
 setFlag :: String -> Annex ()

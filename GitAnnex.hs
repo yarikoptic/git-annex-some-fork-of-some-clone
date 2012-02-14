@@ -119,7 +119,7 @@ options = Option.common ++
 		"skip files not using a key-value backend"
 	] ++ Option.matcher
 	where
-		setnumcopies v = Annex.changeState $ \s -> s {Annex.forcenumcopies = readMaybe v }
+		setnumcopies v = Annex.changeState $ \s -> s {Annex.forcenumcopies = readish v }
 		setgitconfig :: String -> Annex ()
 		setgitconfig v = do
 			newg <- inRepo $ Git.Config.store v
@@ -129,4 +129,4 @@ header :: String
 header = "Usage: git-annex command [option ..]"
 
 run :: [String] -> IO ()
-run args = dispatch args cmds options header Git.Construct.fromCwd
+run args = dispatch False args cmds options header Git.Construct.fromCurrent

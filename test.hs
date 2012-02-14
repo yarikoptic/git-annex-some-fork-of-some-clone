@@ -11,10 +11,8 @@ import Test.QuickCheck
 
 import System.Posix.Directory (changeWorkingDirectory)
 import System.Posix.Files
-import Control.Exception (bracket_, bracket, throw)
-import System.IO.Error
 import System.Posix.Env
-import qualified Control.Exception.Extensible as E
+import Control.Exception.Extensible
 import qualified Data.Map as M
 import System.IO.HVFS (SystemFS(..))
 import Text.JSON
@@ -32,7 +30,6 @@ import qualified Locations
 import qualified Types.Backend
 import qualified Types
 import qualified GitAnnex
-import qualified Logs.Location
 import qualified Logs.UUIDBased
 import qualified Logs.Trust
 import qualified Logs.Remote
@@ -132,7 +129,7 @@ test_init = "git-annex init" ~: TestCase $ innewrepo $ do
 		reponame = "test repo"
 
 test_add :: Test
-test_add = "git-annex add" ~: TestList [basic, sha1dup, subdirs]
+test_add = "git-annex add" ~: TestList [basic, sha1dup, sha1unicode, subdirs]
 	where
 		-- this test case runs in the main repo, to set up a basic
 		-- annexed file that later tests will use
@@ -159,6 +156,10 @@ test_add = "git-annex add" ~: TestList [basic, sha1dup, subdirs]
 			git_annex "add" [sha1annexedfiledup, "--backend=SHA1"] @? "add of second file with same SHA1 failed"
 			annexed_present sha1annexedfiledup
 			annexed_present sha1annexedfile
+		sha1unicode = TestCase $ intmpclonerepo $ do
+			writeFile sha1annexedfileunicode $ content sha1annexedfileunicode
+			git_annex "add" [sha1annexedfileunicode, "--backend=SHA1"] @? "add of unicode filename failed"
+			annexed_present sha1annexedfileunicode
 		subdirs = TestCase $ intmpclonerepo $ do
 			createDirectory "dir"
 			writeFile "dir/foo" $ content annexedfile
@@ -664,7 +665,7 @@ test_bup_remote = "git-annex bup remote" ~: intmpclonerepo $ when Build.SysConfi
 test_crypto :: Test
 test_crypto = "git-annex crypto" ~: intmpclonerepo $ when Build.SysConfig.gpg $ do
 	-- force gpg into batch mode for the tests
-	setEnv "GPG_AGENT_INFO" "/dev/null" True
+	setEnv "GPG_BATCH" "1" True
 	Utility.Gpg.testTestHarness @? "test harness self-test failed"
 	Utility.Gpg.testHarness $ do
 		createDirectory "dir"
@@ -692,7 +693,7 @@ test_crypto = "git-annex crypto" ~: intmpclonerepo $ when Build.SysConfig.gpg $ 
 git_annex :: String -> [String] -> IO Bool
 git_annex command params = do
 	-- catch all errors, including normally fatal errors
-	r <- E.try (run)::IO (Either E.SomeException ())
+	r <- try (run)::IO (Either SomeException ())
 	case r of
 		Right _ -> return True
 		Left _ -> return False
@@ -728,7 +729,7 @@ git_annex_expectoutput command params expected = do
 -- are not run; this should only be used for actions that query state.
 annexeval :: Types.Annex a -> IO a
 annexeval a = do
-	g <- Git.Construct.fromCwd
+	g <- Git.Construct.fromCurrent
 	g' <- Git.Config.read g
 	s <- Annex.new g'
 	Annex.eval s { Annex.output = Annex.QuietOutput } a
@@ -758,7 +759,7 @@ indir dir a = do
 	-- any type of error and change back to cwd before
 	-- rethrowing.
 	r <- bracket_ (changeToTmpDir dir) (changeWorkingDirectory cwd)
-		(E.try (a)::IO (Either E.SomeException ()))
+		(try (a)::IO (Either SomeException ()))
 	case r of
 		Right () -> return ()
 		Left e -> throw e
@@ -829,14 +830,14 @@ checkunwritable f = do
 
 checkwritable :: FilePath -> Assertion
 checkwritable f = do
-	r <- try $ writeFile f $ content f
+	r <- tryIO $ writeFile f $ content f
 	case r of
 		Left _ -> assertFailure $ "unable to modify " ++ f
 		Right _ -> return ()
 
 checkdangling :: FilePath -> Assertion
 checkdangling f = do
-	r <- try $ readFile f
+	r <- tryIO $ readFile f
 	case r of
 		Left _ -> return () -- expected; dangling link
 		Right _ -> assertFailure $ f ++ " was not a dangling link as expected"
@@ -847,7 +848,7 @@ checklocationlog f expected = do
 	r <- annexeval $ Backend.lookupFile f
 	case r of
 		Just (k, _) -> do
-			uuids <- annexeval $ Logs.Location.keyLocations k
+			uuids <- annexeval $ Remote.keyLocations k
 			assertEqual ("bad content in location log for " ++ f ++ " key " ++ (show k) ++ " uuid " ++ show thisuuid)
 				expected (thisuuid `elem` uuids)
 		_ -> assertFailure $ f ++ " failed to look up key"
@@ -920,6 +921,9 @@ sha1annexedfile = "sha1foo"
 sha1annexedfiledup :: String
 sha1annexedfiledup = "sha1foodup"
 
+sha1annexedfileunicode :: String
+sha1annexedfileunicode = "foo¡"
+
 ingitfile :: String
 ingitfile = "bar"
 
@@ -929,6 +933,7 @@ content f
 	| f == ingitfile = "normal file content"
 	| f == sha1annexedfile ="sha1 annexed file content"
 	| f == sha1annexedfiledup = content sha1annexedfile
+	| f == sha1annexedfileunicode ="sha1 annexed file content ¡ünicodé!"
 	| f == wormannexedfile = "worm annexed file content"
 	| otherwise = "unknown file " ++ f
 

@@ -45,6 +45,8 @@ data RemoteA a = Remote {
 	storeKey :: Key -> a Bool,
 	-- retrieves a key's contents to a file
 	retrieveKeyFile :: Key -> FilePath -> a Bool,
+	-- retrieves a key's contents to a tmp file, if it can be done cheaply
+	retrieveKeyFileCheap :: Key -> FilePath -> a Bool,
 	-- removes a key's contents
 	removeKey :: Key -> a Bool,
 	-- Checks if a key is present in the remote; if the remote
@@ -53,6 +55,8 @@ data RemoteA a = Remote {
 	-- Some remotes can check hasKey without an expensive network
 	-- operation.
 	hasKeyCheap :: Bool,
+	-- Some remotes can provide additional details for whereis.
+	whereisKey :: Maybe (Key -> a [String]),
 	-- a Remote can have a persistent configuration store
 	config :: Maybe RemoteConfig,
 	-- git configuration for the remote

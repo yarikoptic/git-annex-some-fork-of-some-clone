@@ -11,7 +11,6 @@ module CmdLine (
 	shutdown
 ) where
 
-import qualified System.IO.Error as IO
 import qualified Control.Exception as E
 import Control.Exception (throw)
 import System.Console.GetOpt
@@ -22,14 +21,15 @@ import qualified Annex.Queue
 import qualified Git
 import qualified Git.Command
 import Annex.Content
+import Annex.Ssh
 import Command
 
 type Params = [String]
 type Flags = [Annex ()]
 
 {- Runs the passed command line. -}
-dispatch :: Params -> [Command] -> [Option] -> String -> IO Git.Repo -> IO ()
-dispatch args cmds commonoptions header getgitrepo = do
+dispatch :: Bool -> Params -> [Command] -> [Option] -> String -> IO Git.Repo -> IO ()
+dispatch oneshot args cmds commonoptions header getgitrepo = do
 	setupConsole
 	r <- E.try getgitrepo :: IO (Either E.SomeException Git.Repo)
 	case r of
@@ -39,7 +39,7 @@ dispatch args cmds commonoptions header getgitrepo = do
 			(actions, state') <- Annex.run state $ do
 				sequence_ flags
 				prepCommand cmd params
-			tryRun state' cmd $ [startup] ++ actions ++ [shutdown]
+			tryRun state' cmd $ [startup] ++ actions ++ [shutdown oneshot]
 	where
 		(flags, cmd, params) = parseCmd args cmds commonoptions header
 
@@ -47,7 +47,7 @@ dispatch args cmds commonoptions header getgitrepo = do
  - the Command being run, and the remaining parameters for the command. -} 
 parseCmd :: Params -> [Command] -> [Option] -> String -> (Flags, Command, Params)
 parseCmd argv cmds commonoptions header
-	| name == Nothing = err "missing command"
+	| isNothing name = err "missing command"
 	| null matches = err $ "unknown command " ++ fromJust name
 	| otherwise = check $ getOpt Permute (commonoptions ++ cmdoptions cmd) args
 	where
@@ -71,9 +71,11 @@ tryRun' :: Integer -> Annex.AnnexState -> Command -> [CommandCleanup] -> IO ()
 tryRun' errnum _ cmd []
 	| errnum > 0 = error $ cmdname cmd ++ ": " ++ show errnum ++ " failed"
 	| otherwise = return ()
-tryRun' errnum state cmd (a:as) = run >>= handle
+tryRun' errnum state cmd (a:as) = do
+	r <- run
+	handle $! r
 	where
-		run = IO.try $ Annex.run state $ do
+		run = tryIO $ Annex.run state $ do
 			Annex.Queue.flushWhenFull
 			a
 		handle (Left err) = showerr err >> cont False state
@@ -88,8 +90,9 @@ startup :: Annex Bool
 startup = return True
 
 {- Cleanup actions. -}
-shutdown :: Annex Bool
-shutdown = do
-	saveState
+shutdown :: Bool -> Annex Bool
+shutdown oneshot = do
+	saveState oneshot
 	liftIO Git.Command.reap -- zombies from long-running git processes
+	sshCleanup -- ssh connection caching
 	return True

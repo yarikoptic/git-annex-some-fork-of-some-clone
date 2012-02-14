@@ -53,9 +53,11 @@ gen' r u c cst =
 			name = Git.repoDescribe r,
 	 		storeKey = store this,
 			retrieveKeyFile = retrieve this,
+			retrieveKeyFileCheap = retrieveCheap this,
 			removeKey = remove this,
 			hasKey = checkPresent this,
 			hasKeyCheap = False,
+			whereisKey = Nothing,
 			config = c,
 			repo = r,
 			remotetype = remote
@@ -157,6 +159,9 @@ retrieve r k f = s3Action r False $ \(conn, bucket) -> do
 			liftIO $ L.writeFile f $ obj_data o
 			return True
 		Left e -> s3Warning e
+
+retrieveCheap :: Remote -> Key -> FilePath -> Annex Bool
+retrieveCheap _ _ _ = return False
 
 retrieveEncrypted :: Remote -> (Cipher, Key) -> FilePath -> Annex Bool
 retrieveEncrypted r (cipher, enck) f = s3Action r False $ \(conn, bucket) -> do
@@ -268,26 +273,32 @@ s3Connection c = do
 {- S3 creds come from the environment if set. 
  - Otherwise, might be stored encrypted in the remote's config. -}
 s3GetCreds :: RemoteConfig -> Annex (Maybe (String, String))
-s3GetCreds c = do
-	ak <- getEnvKey s3AccessKey
-	sk <- getEnvKey s3SecretKey
-	if null ak || null sk
-		then do
+s3GetCreds c = maybe fromconfig (return . Just) =<< liftIO getenv
+	where
+		getenv = liftM2 (,)
+			<$> get s3AccessKey
+			<*> get s3SecretKey
+			where
+				get = catchMaybeIO . getEnv
+		setenv (ak, sk) = do
+			setEnv s3AccessKey ak True
+			setEnv s3SecretKey sk True
+		fromconfig = do
 			mcipher <- remoteCipher c
 			case (M.lookup "s3creds" c, mcipher) of
-				(Just encrypted, Just cipher) -> do
-					s <- liftIO $ withDecryptedContent cipher
-						(return $ L.pack $ fromB64 encrypted)
-						(return . L.unpack)
-					let [ak', sk', _rest] = lines s
-					liftIO $ do
-						setEnv s3AccessKey ak True
-						setEnv s3SecretKey sk True
-					return $ Just (ak', sk')
+				(Just s3creds, Just cipher) ->
+					liftIO $ decrypt s3creds cipher
 				_ -> return Nothing
-		else return $ Just (ak, sk)
-	where
-		getEnvKey s = liftIO $ catchDefaultIO (getEnv s) ""
+		decrypt s3creds cipher = do
+			creds <- lines <$>
+				withDecryptedContent cipher
+					(return $ L.pack $ fromB64 s3creds)
+					(return . L.unpack)
+			case creds of
+				[ak, sk] -> do
+					setenv (ak, sk)
+					return $ Just (ak, sk)
+				_ -> do error "bad s3creds"
 
 {- Stores S3 creds encrypted in the remote's config if possible. -}
 s3SetCreds :: RemoteConfig -> Annex RemoteConfig

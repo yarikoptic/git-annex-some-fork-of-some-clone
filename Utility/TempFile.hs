@@ -12,7 +12,7 @@ import System.IO
 import System.Posix.Process hiding (executeFile)
 import System.Directory
 
-import Utility.Misc
+import Utility.Exception
 import Utility.Path
 
 {- Runs an action like writeFile, writing to a temp file first and
@@ -26,8 +26,10 @@ viaTmp a file content = do
 	a tmpfile content
 	renameFile tmpfile file
 
+type Template = String
+
 {- Runs an action with a temp file, then removes the file. -}
-withTempFile :: String -> (FilePath -> Handle -> IO a) -> IO a
+withTempFile :: Template -> (FilePath -> Handle -> IO a) -> IO a
 withTempFile template a = bracket create remove use
 	where
 		create = do

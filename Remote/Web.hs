@@ -15,6 +15,7 @@ import Annex.Content
 import Config
 import Logs.Web
 import qualified Utility.Url as Url
+import Types.Key
 
 remote :: RemoteType
 remote = RemoteType {
@@ -40,9 +41,11 @@ gen r _ _ =
 		name = Git.repoDescribe r,
 		storeKey = uploadKey,
 		retrieveKeyFile = downloadKey,
+		retrieveKeyFileCheap = downloadKeyCheap,
 		removeKey = dropKey,
 		hasKey = checkKey,
 		hasKeyCheap = False,
+		whereisKey = Just getUrls,
 		config = Nothing,
 		repo = r,
 		remotetype = remote
@@ -57,6 +60,9 @@ downloadKey key file = get =<< getUrls key
 		get urls = do
 			showOutput -- make way for download progress bar
 			downloadUrl urls file
+
+downloadKeyCheap :: Key -> FilePath -> Annex Bool
+downloadKeyCheap _ _ = return False
 
 uploadKey :: Key -> Annex Bool
 uploadKey _ = do
@@ -73,8 +79,8 @@ checkKey key = do
 	us <- getUrls key
 	if null us
 		then return $ Right False
-		else return . Right =<< checkKey' us
-checkKey' :: [URLString] -> Annex Bool
-checkKey' us = untilTrue us $ \u -> do
+		else return . Right =<< checkKey' key us
+checkKey' :: Key -> [URLString] -> Annex Bool
+checkKey' key us = untilTrue us $ \u -> do
 	showAction $ "checking " ++ u
-	liftIO $ Url.exists u
+	liftIO $ Url.check u (keySize key)

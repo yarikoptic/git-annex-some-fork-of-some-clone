@@ -145,9 +145,14 @@ subdirectories).
 
 * addurl [url ...]
 
-  Downloads each url to a file, which is added to the annex.
+  Downloads each url to its own file, which is added to the annex.
 
-  To avoid immediately downloading the url, specify --fast
+  To avoid immediately downloading the url, specify --fast.
+
+  To specify what file the url is added to, specify --file. This changes
+  the behavior; now all the specified urls are recorded as alternate
+  locations from which the file can be downloaded. In this mode, addurl
+  can be used both to add new files, or to add urls to existing files.
 
 # REPOSITORY SETUP COMMANDS
 
@@ -210,7 +215,10 @@ subdirectories).
 
   With parameters, only the specified files are checked.
 
-  To avoid expensive checksum calculations, specify --fast
+  To check a remote to fsck, specify --from.
+  
+  To avoid expensive checksum calculations (and expensive transfers when
+  fscking a remote), specify --fast
 
 * unused
 
@@ -572,6 +580,10 @@ Here are all the supported configuration settings.
 
   Automatically maintained, and used to automate upgrades between versions.
 
+* `annex.sshcaching`
+
+  By default, git-annex caches ssh connections. To disable this, set to `false`.
+
 * `remote.<name>.annex-cost`
 
   When determining which repository to
@@ -605,6 +617,12 @@ Here are all the supported configuration settings.
 * `remote.<name>.annex-uuid`
 
   git-annex caches UUIDs of remote repositories here.
+
+* `remote.<name>.annex-trustlevel`
+
+  Configures a local trust level for the remote. This overrides the value
+  configured by the trust and untrust commands. The value can be any of
+  "trusted", "semitrusted" or "untrusted".
 
 * `remote.<name>.annex-ssh-options`
 

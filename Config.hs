@@ -30,7 +30,7 @@ getConfig r key def = do
 	def' <- fromRepo $ Git.Config.get ("annex." ++ key) def
 	fromRepo $ Git.Config.get (remoteConfig r key) def'
 
-{- Looks up a per-remote config setting in git config. -}
+{- A per-remote config setting in git config. -}
 remoteConfig :: Git.Repo -> ConfigKey -> String
 remoteConfig r key = "remote." ++ fromMaybe "" (Git.remoteName r) ++ ".annex-" ++ key
 
@@ -40,7 +40,7 @@ remoteConfig r key = "remote." ++ fromMaybe "" (Git.remoteName r) ++ ".annex-" +
 remoteCost :: Git.Repo -> Int -> Annex Int
 remoteCost r def = do
 	cmd <- getConfig r "cost-command" ""
-	(fromMaybe def . readMaybe) <$>
+	(fromMaybe def . readish) <$>
 		if not $ null cmd
 			then liftIO $ snd <$> pipeFrom "sh" ["-c", cmd]
 			else getConfig r "cost" ""
@@ -67,9 +67,7 @@ prop_cost_sane = False `notElem`
 	, semiCheapRemoteCost + encryptedRemoteCostAdj < expensiveRemoteCost
 	]
 
-{- Checks if a repo should be ignored, based either on annex-ignore
- - setting, or on command-line options. Allows command-line to override
- - annex-ignore. -}
+{- Checks if a repo should be ignored. -}
 repoNotIgnored :: Git.Repo -> Annex Bool
 repoNotIgnored r = not . Git.configTrue <$> getConfig r "ignore" "false"
 
@@ -80,6 +78,10 @@ getNumCopies v = perhaps (use v) =<< Annex.getState Annex.forcenumcopies
 	where
 		use (Just n) = return n
 		use Nothing = perhaps (return 1) =<< 
-			readMaybe <$> fromRepo (Git.Config.get config "1")
+			readish <$> fromRepo (Git.Config.get config "1")
 		perhaps fallback = maybe fallback (return . id)
 		config = "annex.numcopies"
+
+{- Gets the trust level set for a remote in git config. -}
+getTrustLevel :: Git.Repo -> Annex (Maybe String)
+getTrustLevel r = fromRepo $ Git.Config.getMaybe $ remoteConfig r "trustlevel"
