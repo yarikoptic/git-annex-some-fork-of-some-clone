@@ -28,6 +28,7 @@ module Annex (
 
 import Control.Monad.IO.Control
 import Control.Monad.State.Strict
+import System.Posix.Types (Fd)
 
 import Common
 import qualified Git
