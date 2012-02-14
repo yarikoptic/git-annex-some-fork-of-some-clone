@@ -59,6 +59,7 @@ add_plugins:
   - comments
   - aggregate
   - gitpush
+  - template
 # plugins to disable
 disable_plugins: []
 # additional directory to search for template files
