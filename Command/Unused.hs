@@ -267,7 +267,7 @@ withKeysReferencedInGitRef a ref = do
 	showAction $ "checking " ++ Git.Ref.describe ref
 	go =<< inRepo (LsTree.lsTree ref)
 	where
-		go [] = return ()
+		go [] = noop
 		go (l:ls)
 			| isSymLink (LsTree.mode l) = do
 				content <- catFile ref $ LsTree.file l

@@ -27,7 +27,8 @@
 # include <sys/mount.h>
 # define STATCALL statfs64
 # define STATSTRUCT statfs
-# define UNKNOWN /* temporarily disabled; trying to nail down a build failure */
+# warning free space checking code temporarily disabled due to build failure
+# define UNKNOWN
 #else
 #if defined (__linux__)
 /* This is a POSIX standard, so might also work elsewhere. */
@@ -57,9 +58,10 @@ unsigned long long int diskfree(const char *path) {
 	unsigned long long int available, blocksize;
 	struct STATSTRUCT buf;
 
-	errno = 0;
 	if (STATCALL(path, &buf) != 0)
 		return 0; /* errno is set */
+	else
+		errno = 0;
 
 	available = buf.f_bavail;
 	blocksize = buf.f_bsize;

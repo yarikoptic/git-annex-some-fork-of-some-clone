@@ -11,17 +11,17 @@ import System.Posix.Signals
 
 demo :: IO ()
 demo = withINotify $ \i -> do
-	watchDir i add del "/home/joey/tmp/me"
+	watchDir i (const True) (Just add) (Just del) "/home/joey/tmp/me"
 	putStrLn "started"
 	waitForTermination
 	where
 		add file = putStrLn $ "add " ++ file
 		del file = putStrLn $ "del " ++ file
 
-{- Watches for changes to files in a directory, and all its subdirectories,
- - using inotify. This function returns after its initial setup is
- - complete, leaving a thread running. Then callbacks are made for adding
- - and deleting files.
+{- Watches for changes to files in a directory, and all its subdirectories
+ - that match a test, using inotify. This function returns after its initial
+ - setup is complete, leaving a thread running. Then callbacks are made for
+ - adding and deleting files.
  -
  - Inotify is weak at recursive directory watching; the whole directory
  - tree must be walked and watches set explicitly for each subdirectory.
@@ -48,27 +48,39 @@ demo = withINotify $ \i -> do
  - /proc/sys/fs/inotify/max_user_watches (default 8192).
  - So This will fail if there are too many subdirectories.
  -}
-watchDir :: INotify -> (FilePath -> IO ()) -> (FilePath -> IO ()) -> FilePath -> IO ()
-watchDir i add del dir = watchDir' False i add del dir
-watchDir' :: Bool -> INotify -> (FilePath -> IO ()) -> (FilePath -> IO ()) -> FilePath -> IO ()
-watchDir' scan i add del dir = do
-	_ <- addWatch i [MoveIn, MoveOut, Create, Delete, CloseWrite] dir go
-	_ <- mapM walk =<< dirContents dir
-	return ()
+watchDir :: INotify -> (FilePath -> Bool) -> Maybe (FilePath -> IO ()) -> Maybe (FilePath -> IO ()) -> FilePath -> IO ()
+watchDir i test add del dir = watchDir' False i test add del dir
+watchDir' :: Bool -> INotify -> (FilePath -> Bool) -> Maybe (FilePath -> IO ()) -> Maybe (FilePath -> IO ()) -> FilePath -> IO ()
+watchDir' scan i test add del dir = do
+	if test dir
+		then void $ do
+			_ <- addWatch i watchevents dir go
+			mapM walk =<< dirContents dir
+		else noop
 	where
-		recurse = watchDir' scan i add del
-		walk f = ifM (Files.isDirectory <$> getFileStatus f)
+		watchevents
+			| isJust add && isJust del =
+				[Create, MoveIn, MoveOut, Delete, CloseWrite]
+			| isJust add = [Create, MoveIn, CloseWrite]
+			| isJust del = [Create, MoveOut, Delete]
+			| otherwise = [Create]
+
+		recurse = watchDir' scan i test add del
+		walk f = ifM (catchBoolIO $ Files.isDirectory <$> getFileStatus f)
 			( recurse f
-			, if scan then add f else return ()
+			, when (scan && isJust add) $ fromJust add f
 			)
-		a <@> f = a $ dir </> f
-		go (Created { isDirectory = False }) = return ()
-		go (Created { filePath = subdir }) = recurse <@> subdir
+
+		go (Created { isDirectory = False }) = noop
+		go (Created { filePath = subdir }) = Just recurse <@> subdir
 		go (Closed { maybeFilePath = Just f }) = add <@> f
 		go (MovedIn { isDirectory = False, filePath = f }) = add <@> f
 		go (MovedOut { isDirectory = False, filePath = f }) = del <@> f
 		go (Deleted { isDirectory = False, filePath = f }) = del <@> f
-		go _ = return ()
+		go _ = noop
+		
+		Just a <@> f = a $ dir </> f
+		Nothing <@> _ = noop
 
 {- Pauses the main thread, letting children run until program termination. -}
 waitForTermination :: IO ()
@@ -79,6 +91,5 @@ waitForTermination = do
 		check keyboardSignal mv
 	takeMVar mv
 	where
-		check sig mv = do
+		check sig mv = void $
 			installHandler sig (CatchOnce $ putMVar mv ()) Nothing
-			return ()
