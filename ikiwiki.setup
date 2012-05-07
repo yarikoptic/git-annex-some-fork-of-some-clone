@@ -14,6 +14,7 @@ adminemail: joey@kitenet.net
 # users who are wiki admins
 adminuser:
   - http://joey.kitenet.net/
+  - http://joeyh.name/
 # users who are banned from the wiki
 banned_users: []
 # where the source of the wiki is located
