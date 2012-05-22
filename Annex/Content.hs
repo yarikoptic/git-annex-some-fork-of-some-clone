@@ -34,6 +34,7 @@ import Common.Annex
 import Logs.Location
 import Annex.UUID
 import qualified Git
+import qualified Git.Config
 import qualified Annex
 import qualified Annex.Queue
 import qualified Annex.Branch
@@ -297,19 +298,19 @@ getKeysPresent = liftIO . traverse (2 :: Int) =<< fromRepo gitAnnexObjectDir
  - especially if performing a short-lived action.
  -}
 saveState :: Bool -> Annex ()
-saveState oneshot = do
-	Annex.Queue.flush False
+saveState oneshot = doSideAction $ do
+	Annex.Queue.flush
 	unless oneshot $
 		ifM alwayscommit
 			( Annex.Branch.commit "update" , Annex.Branch.stage)
 	where
-		alwayscommit = fromMaybe True . Git.configTrue
-			<$> getConfig "annex.alwayscommit" ""
+		alwayscommit = fromMaybe True . Git.Config.isTrue
+			<$> getConfig (annexConfig "alwayscommit") ""
 
 {- Downloads content from any of a list of urls. -}
 downloadUrl :: [Url.URLString] -> FilePath -> Annex Bool
 downloadUrl urls file = do
-	o <- map Param . words <$> getConfig "annex.web-options" ""
+	o <- map Param . words <$> getConfig (annexConfig "web-options") ""
 	headers <- getHttpHeaders
 	liftIO $ anyM (\u -> Url.download u headers o file) urls
 

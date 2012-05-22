@@ -11,7 +11,7 @@ import System.Console.GetOpt
 
 import Common.Annex
 import qualified Git.Config
-import qualified Git.Construct
+import qualified Git.CurrentRepo
 import CmdLine
 import Command
 import Types.TrustLevel
@@ -37,6 +37,7 @@ import qualified Command.InitRemote
 import qualified Command.Fsck
 import qualified Command.Unused
 import qualified Command.DropUnused
+import qualified Command.AddUnused
 import qualified Command.Unlock
 import qualified Command.Lock
 import qualified Command.PreCommit
@@ -86,6 +87,7 @@ cmds = concat
 	, Command.Fsck.def
 	, Command.Unused.def
 	, Command.DropUnused.def
+	, Command.AddUnused.def
 	, Command.Find.def
 	, Command.Whereis.def
 	, Command.Log.def
@@ -131,4 +133,4 @@ header :: String
 header = "Usage: git-annex command [option ..]"
 
 run :: [String] -> IO ()
-run args = dispatch True args cmds options header Git.Construct.fromCurrent
+run args = dispatch True args cmds options header Git.CurrentRepo.get

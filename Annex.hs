@@ -10,7 +10,6 @@
 module Annex (
 	Annex,
 	AnnexState(..),
-	OutputType(..),
 	new,
 	newState,
 	run,
@@ -19,6 +18,7 @@ module Annex (
 	changeState,
 	setFlag,
 	setField,
+	setOutput,
 	getFlag,
 	getField,
 	addCleanup,
@@ -44,6 +44,7 @@ import qualified Types.Remote
 import Types.Crypto
 import Types.BranchState
 import Types.TrustLevel
+import Types.Messages
 import Utility.State
 import qualified Utility.Matcher
 import qualified Data.Map as M
@@ -69,8 +70,6 @@ instance MonadBaseControl IO Annex where
 		where
 			unStAnnex (StAnnex st) = st
 
-data OutputType = NormalOutput | QuietOutput | JSONOutput
-
 type Matcher a = Either [Utility.Matcher.Token a] (Utility.Matcher.Matcher a)
 
 -- internal state storage
@@ -78,7 +77,7 @@ data AnnexState = AnnexState
 	{ repo :: Git.Repo
 	, backends :: [BackendA Annex]
 	, remotes :: [Types.Remote.RemoteA Annex]
-	, output :: OutputType
+	, output :: MessageState
 	, force :: Bool
 	, fast :: Bool
 	, auto :: Bool
@@ -92,7 +91,7 @@ data AnnexState = AnnexState
 	, shared :: Maybe SharedRepository
 	, forcetrust :: TrustMap
 	, trustmap :: Maybe TrustMap
-	, ciphers :: M.Map EncryptedCipher Cipher
+	, ciphers :: M.Map StorableCipher Cipher
 	, lockpool :: M.Map FilePath Fd
 	, flags :: M.Map String Bool
 	, fields :: M.Map String String
@@ -104,7 +103,7 @@ newState gitrepo = AnnexState
 	{ repo = gitrepo
 	, backends = []
 	, remotes = []
-	, output = NormalOutput
+	, output = defaultMessageState
 	, force = False
 	, fast = False
 	, auto = False
@@ -125,7 +124,8 @@ newState gitrepo = AnnexState
 	, cleanup = M.empty
 	}
 
-{- Create and returns an Annex state object for the specified git repo. -}
+{- Makes an Annex state object for the specified git repo.
+ - Ensures the config is read, if it was not already. -}
 new :: Git.Repo -> IO AnnexState
 new gitrepo = newState <$> Git.Config.read gitrepo
 
@@ -149,6 +149,11 @@ setField field value = changeState $ \s ->
 addCleanup :: String -> Annex () -> Annex ()
 addCleanup uid a = changeState $ \s ->
 	s { cleanup = M.insertWith' const uid a $ cleanup s }
+
+{- Sets the type of output to emit. -}
+setOutput :: OutputType -> Annex ()
+setOutput o = changeState $ \s ->
+	s { output = (output s) { outputType = o } }
 
 {- Checks if a flag was set. -}
 getFlag :: String -> Annex Bool
