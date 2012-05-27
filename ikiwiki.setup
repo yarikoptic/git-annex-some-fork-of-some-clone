@@ -13,8 +13,8 @@ wikiname: git-annex
 adminemail: joey@kitenet.net
 # users who are wiki admins
 adminuser:
-  - http://joey.kitenet.net/
-  - http://joeyh.name/
+- http://joey.kitenet.net/
+- http://joeyh.name/
 # users who are banned from the wiki
 banned_users: []
 # where the source of the wiki is located
@@ -28,40 +28,41 @@ cgiurl: http://git-annex.branchable.com/ikiwiki.cgi
 # filename of cgi wrapper to generate
 cgi_wrapper: /var/www/b-git-annex/ikiwiki.cgi
 # mode for cgi_wrapper (can safely be made suid)
-cgi_wrappermode: 0755
+cgi_wrappermode: '0755'
 # rcs backend to use
 rcs: git
 # plugins to add to the default configuration
 add_plugins:
-  - goodstuff
-  - websetup
-  - 404
-  - ikiwikihosting
-  - branchable
-  - recentchangesdiff
-  - attachment
-  - remove
-  - rename
-  - edittemplate
-  - favicon
-  - format
-  - fortune
-  - highlight
-  - listdirectives
-  - poll
-  - progress
-  - relativedate
-  - search
-  - testpagespec
-  - version
-  - theme
-  - sidebar
-  - blogspam
-  - comments
-  - aggregate
-  - gitpush
-  - template
-  - notifyemail
+- goodstuff
+- websetup
+- '404'
+- ikiwikihosting
+- branchable
+- recentchangesdiff
+- attachment
+- remove
+- rename
+- edittemplate
+- favicon
+- format
+- fortune
+- highlight
+- listdirectives
+- poll
+- progress
+- relativedate
+- search
+- testpagespec
+- version
+- theme
+- sidebar
+- blogspam
+- comments
+- aggregate
+- gitpush
+- template
+- notifyemail
+- trail
 # plugins to disable
 disable_plugins: []
 # additional directory to search for template files
@@ -71,21 +72,21 @@ underlaydir: /usr/share/ikiwiki/basewiki
 # display verbose messages?
 #verbose: 1
 # log to syslog?
-syslog: 1
+syslog: '1'
 # create output files named page/index.html?
-usedirs: 1
+usedirs: '1'
 # use '!'-prefixed preprocessor directives?
-prefix_directives: 1
+prefix_directives: '1'
 # use page/index.mdwn source files
-indexpages: 0
+indexpages: '0'
 # enable Discussion pages?
-discussion: 0
+discussion: '0'
 # name of Discussion pages
 discussionpage: Discussion
 # generate HTML5?
-html5: 0
+html5: '0'
 # only send cookies over SSL connections?
-sslcookie: 0
+sslcookie: '0'
 # extension to use for new pages
 default_pageext: mdwn
 # extension to use for html files
@@ -97,11 +98,11 @@ timeformat: '%c'
 # put user pages below specified page
 userdir: users
 # how many backlinks to show before hiding excess (0 to show all)
-numbacklinks: 10
+numbacklinks: '10'
 # attempt to hardlink source files? (optimisation for large files)
-hardlink: 1
-# force ikiwiki to use a particular umask
-#umask: 022
+hardlink: '1'
+# force ikiwiki to use a particular umask (keywords public, group or private, or a number)
+#umask: public
 # group for wrappers to run in
 #wrappergroup: ikiwiki
 # extra library and plugin directory
@@ -111,13 +112,13 @@ ENV: {}
 # time zone name
 timezone: GMT
 # regexp of normally excluded files to include
-#include: '^\.htaccess$'
+#include: ^\.htaccess$
 # regexp of files that should be skipped
-#exclude: '^(*\.private|Makefile)$'
+#exclude: ^(*\.private|Makefile)$
 # specifies the characters that are allowed in source filenames
-wiki_file_chars: '-[:alnum:]+/.:_'
+wiki_file_chars: -[:alnum:]+/.:_
 # allow symlinks in the path leading to the srcdir (potentially insecure)
-allow_symlinks_before_srcdir: 0
+allow_symlinks_before_srcdir: '0'
 
 ######################################################################
 # core plugins
@@ -127,11 +128,11 @@ allow_symlinks_before_srcdir: 0
 
 # branchable plugin
 # Allow anyone to branch, check out, and copy this site?
-branchable: 1
+branchable: '1'
 # Allow anyone to git push verified changes to this site?
-anonpush: 1
+anonpush: '1'
 # Display "Branchable" link on action bar?
-branchable_action: 1
+branchable_action: '1'
 
 # git plugin
 # git hook to generate
@@ -139,16 +140,16 @@ git_wrapper: /home/b-git-annex/source.git/hooks/post-update
 # shell command for git_wrapper to run, in the background
 #git_wrapper_background_command: git push github
 # mode for git_wrapper (can safely be made suid)
-#git_wrappermode: 06755
+#git_wrappermode: '06755'
 # git pre-receive hook to generate
 git_test_receive_wrapper: /home/b-git-annex/source.git/hooks/pre-receive
 # unix users whose commits should be checked by the pre-receive hook
 untrusted_committers:
-  - ikiwiki-anon
+- ikiwiki-anon
 # gitweb url to show file history ([[file]] substituted)
-historyurl: 'http://source.git-annex.branchable.com/?p=source.git;a=history;f=doc/[[file]];hb=HEAD'
+historyurl: http://source.git-annex.branchable.com/?p=source.git;a=history;f=doc/[[file]];hb=HEAD
 # gitweb url to show a diff ([[file]], [[sha1_to]], [[sha1_from]], [[sha1_commit]], and [[sha1_parent]] substituted)
-diffurl: 'http://source.git-annex.branchable.com/?p=source.git;a=blobdiff;f=doc/[[file]];h=[[sha1_to]];hp=[[sha1_from]];hb=[[sha1_commit]];hpb=[[sha1_parent]]'
+diffurl: http://source.git-annex.branchable.com/?p=source.git;a=blobdiff;f=doc/[[file]];h=[[sha1_to]];hp=[[sha1_from]];hb=[[sha1_commit]];hpb=[[sha1_parent]]
 # where to pull and push changes (set to empty string to disable)
 gitorigin_branch: origin
 # branch that the wiki is stored in
@@ -157,8 +158,8 @@ gitmaster_branch: master
 # gitpush plugin
 # git repository urls that changes are pushed to
 git_push_to:
-  - git@github.com:joeyh/git-annex.git
-  - joey@git.kitenet.net:/srv/git/git-annex
+- git@github.com:joeyh/git-annex.git
+- joey@git.kitenet.net:/srv/git/git-annex
 
 # htmlscrubber plugin
 # PageSpec specifying pages not to scrub
@@ -174,17 +175,17 @@ owner: http://joey.kitenet.net/
 # internal hostname of this site
 hostname: git-annex.branchable.com
 # site creation datestamp
-created: 1287531313
+created: '1287531313'
 # how many days to retain logs
 #log_period: 7
 # disable IPv6?
-ipv6_disabled: 0
+ipv6_disabled: '0'
 
 # inline plugin
 # enable rss feeds by default?
-rss: 1
+rss: '1'
 # enable atom feeds by default?
-atom: 1
+atom: '1'
 # allow rss feeds to be used?
 #allowrss: 0
 # allow atom feeds to be used?
@@ -206,7 +207,7 @@ pingurl: []
 # PageSpec of pages to check for spam
 blogspam_pagespec: postcomment(*)
 # options to send to blogspam server
-#blogspam_options: 'blacklist=1.2.3.4,blacklist=8.7.6.5,max-links=10'
+#blogspam_options: blacklist=1.2.3.4,blacklist=8.7.6.5,max-links=10
 # blogspam server XML-RPC url
 #blogspam_server: ''
 
@@ -253,29 +254,43 @@ langdefdir: /usr/share/highlight/langDefs
 # mdwn plugin
 # enable multimarkdown features?
 #multimarkdown: 0
+# disable use of markdown discount?
+#nodiscount: 0
 
 # po plugin
 # master language (non-PO files)
 #po_master_language: en|English
 # slave languages (translated via PO files) format: ll|Langname
 #po_slave_languages:
-#  - fr|Français
-#  - es|Español
-#  - de|Deutsch
+#- fr|Français
+#- es|Español
+#- de|Deutsch
 # PageSpec controlling which pages are translatable
 po_translatable_pages: ''
 # internal linking behavior (default/current/negotiated)
 po_link_to: default
 
 ######################################################################
-# misc plugins
-#   (filecheck)
+# special-purpose plugins
+#   (osm)
 ######################################################################
+
+# osm plugin
+# the default zoom when you click on the map link
+#osm_default_zoom: '15'
+# the icon shown on links and on the main map
+#osm_default_icon: ikiwiki/images/osm.png
+# the alt tag of links, defaults to empty
+#osm_alt: ''
+# the output format for waypoints, can be KML, GeoJSON or CSV (one or many, comma-separated)
+#osm_format: KML
+# the icon attached to a tag, displayed on the map for tagged pages
+#osm_tag_default_icon: icon.png
 
 ######################################################################
 # web plugins
-#   (404, attachment, comments, editdiff, edittemplate, getsource, google,
-#    goto, mirrorlist, remove, rename, repolist, search, theme, userlist,
+#   (404, attachment, comments, editdiff, edittemplate, google, goto,
+#    mirrorlist, remove, rename, repolist, search, theme, userlist,
 #    websetup, wmd)
 ######################################################################
 
@@ -287,7 +302,8 @@ virus_checker: clamdscan -
 
 # comments plugin
 # PageSpec of pages where comments are allowed
-comments_pagespec: page(*) and !*/Discussion and !ikiwiki/* and !index and !forum and !bugs and !todo and !news and !recentchanges and !comments and !walkthrough
+comments_pagespec: page(*) and !*/Discussion and !ikiwiki/* and !index and !forum
+  and !bugs and !todo and !news and !recentchanges and !comments and !walkthrough
 # PageSpec of pages where posting new comments is not allowed
 comments_closed_pagespec: ''
 # Base name for comments, e.g. "comment_" for pages like "sandbox/comment_12"
@@ -297,11 +313,7 @@ comments_pagename: comment_
 # Allow anonymous commenters to set an author name?
 #comments_allowauthor: 0
 # commit comments to the VCS
-comments_commit: 1
-
-# getsource plugin
-# Mime type for returned source.
-#getsource_mimetype: text/plain; charset=utf-8
+comments_commit: '1'
 
 # mirrorlist plugin
 # list of mirrors
@@ -310,8 +322,8 @@ comments_commit: 1
 # repolist plugin
 # URIs of repositories containing the wiki's source
 repositories:
-  - ssh://b-git-annex@git-annex.branchable.com/
-  - git://git-annex.branchable.com/
+- ssh://b-git-annex@git-annex.branchable.com/
+- git://git-annex.branchable.com/
 
 # search plugin
 # path to the omega cgi program
@@ -324,23 +336,23 @@ omega_cgi: /usr/lib/cgi-bin/omega/omega
 # websetup plugin
 # list of plugins that cannot be enabled/disabled via the web interface
 websetup_force_plugins:
-  - httpauth
-  - openid
-  - mdwn
-  - wmd
+- httpauth
+- openid
+- mdwn
+- wmd
 # list of additional setup field keys to treat as unsafe
 websetup_unsafe:
-  - url
-  - cgiurl
-  - verbose
-  - syslog
-  - usedirs
-  - prefix_directives
-  - indexpages
-  - repositories
-  - sslcookie
+- url
+- cgiurl
+- verbose
+- syslog
+- usedirs
+- prefix_directives
+- indexpages
+- repositories
+- sslcookie
 # show unsafe settings, read-only, in web interface?
-websetup_show_unsafe: 0
+websetup_show_unsafe: '0'
 
 ######################################################################
 # widget plugins
@@ -365,29 +377,37 @@ directive_description_dir: ikiwiki/directive
 # Should teximg use dvipng to render, or dvips and convert?
 #teximg_dvipng: ''
 # LaTeX prefix for teximg plugin
-#teximg_prefix: |
-#  \documentclass{article}
+#teximg_prefix: '\documentclass{article}
+#
 #  \usepackage[utf8]{inputenc}
+#
 #  \usepackage{amsmath}
+#
 #  \usepackage{amsfonts}
+#
 #  \usepackage{amssymb}
+#
 #  \pagestyle{empty}
+#
 #  \begin{document}
+#
+#'
 # LaTeX postfix for teximg plugin
-#teximg_postfix: '\end{document}'
+#teximg_postfix: \end{document}
 
 ######################################################################
 # other plugins
 #   (aggregate, autoindex, brokenlinks, camelcase, ddate, embed, favicon,
-#    flattr, goodstuff, htmlbalance, localstyle, missingsite, pagetemplate,
-#    parked, pingee, pinger, prettydate, recentchanges, recentchangesdiff,
-#    relativedate, rsync, sidebar, smiley, sortnaturally, tag,
-#    testpagespec, transient, typography, underlay)
+#    filecheck, flattr, goodstuff, htmlbalance, localstyle, missingsite,
+#    notifyemail, pagetemplate, parked, pingee, pinger, prettydate,
+#    recentchanges, recentchangesdiff, relativedate, rsync, sidebar,
+#    smiley, sortnaturally, tag, testpagespec, trail, transient,
+#    typography, underlay)
 ######################################################################
 
 # aggregate plugin
 # enable aggregation to internal pages?
-aggregateinternal: 1
+aggregateinternal: '1'
 # allow aggregation to be triggered via the web?
 #aggregate_webtrigger: 0
 # cookie control
@@ -396,7 +416,7 @@ cookiejar:
 
 # autoindex plugin
 # commit autocreated index pages
-autoindex_commit: 1
+autoindex_commit: '1'
 
 # camelcase plugin
 # list of words to not turn into links
@@ -422,7 +442,7 @@ prettydateformat: '%X, %B %o, %Y'
 # name of the recentchanges page
 recentchangespage: recentchanges
 # number of changes to track
-recentchangesnum: 100
+recentchangesnum: '100'
 
 # rsync plugin
 # command to run to sync updated pages
@@ -438,13 +458,13 @@ recentchangesnum: 100
 # autocreate new tag pages?
 #tag_autocreate: 1
 # commit autocreated tag pages
-tag_autocreate_commit: 1
+tag_autocreate_commit: '1'
 
 # typography plugin
 # Text::Typography attributes value
-#typographyattributes: 3
+#typographyattributes: '3'
 
 # underlay plugin
 # extra underlay directories to add
 #add_underlays:
-#  - /home/b-git-annex/wiki.underlay
+#- /home/b-git-annex/wiki.underlay
