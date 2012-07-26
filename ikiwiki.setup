@@ -55,7 +55,6 @@ add_plugins:
 - version
 - theme
 - sidebar
-- blogspam
 - comments
 - aggregate
 - gitpush
@@ -63,7 +62,9 @@ add_plugins:
 - notifyemail
 - trail
 - search
-disable_plugins: []
+# plugins to disable
+disable_plugins:
+- blogspam
 # additional directory to search for template files
 templatedir: /usr/share/ikiwiki/templates
 # base wiki source location
