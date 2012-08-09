@@ -62,6 +62,7 @@ add_plugins:
 - notifyemail
 - trail
 - search
+- shortcut
 # plugins to disable
 disable_plugins:
 - blogspam
