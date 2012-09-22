@@ -1,0 +1,4 @@
+git-annex 3.20120629~bpo60+2 released with [[!toggle text="these changes"]]
+[[!toggleable text="""
+   * Avoid passing --no-edit to git merge when the version of git doesn't
+     support it."""]]
