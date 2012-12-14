@@ -29,6 +29,10 @@ cgiurl: http://git-annex.branchable.com/ikiwiki.cgi
 cgi_wrapper: /var/www/b-git-annex/ikiwiki.cgi
 # mode for cgi_wrapper (can safely be made suid)
 cgi_wrappermode: '0755'
+# number of seconds to delay CGI requests when overloaded
+cgi_overload_delay: ''
+# message to display when overloaded (may contain html)
+cgi_overload_message: ''
 # rcs backend to use
 rcs: git
 # plugins to add to the default configuration
@@ -63,6 +67,7 @@ add_plugins:
 - trail
 - search
 - shortcut
+- calendar
 # plugins to disable
 disable_plugins:
 - blogspam
@@ -287,6 +292,13 @@ po_link_to: default
 #osm_format: KML
 # the icon attached to a tag, displayed on the map for tagged pages
 #osm_tag_default_icon: icon.png
+# Url for the OpenLayers.js file
+#osm_openlayers_url: http://www.openlayers.org/api/OpenLayers.js
+# Layers to use in the map. Can be either the 'OSM' string or a type option for Google maps (GoogleNormal, GoogleSatellite, GoogleHybrid or GooglePhysical). It can also be an arbitrary URL in a syntax acceptable for OpenLayers.Layer.OSM.url parameter.
+#osm_layers:
+#  OSM: GoogleSatellite
+# Google maps API key, Google layer not used if missing, see https://code.google.com/apis/console/ to get an API key
+#osm_google_apikey: ''
 
 ######################################################################
 # web plugins
@@ -320,6 +332,8 @@ comments_commit: '1'
 # mirrorlist plugin
 # list of mirrors
 #mirrorlist: {}
+# generate links that point to the mirrors' ikiwiki CGI
+#mirrorlist_use_cgi: 1
 
 # repolist plugin
 # URIs of repositories containing the wiki's source
@@ -367,9 +381,9 @@ websetup_show_unsafe: '0'
 
 # calendar plugin
 # base of the archives hierarchy
-#archivebase: archives
+archivebase: design/assistant/blog/archives
 # PageSpec of pages to include in the archives; used by ikiwiki-calendar command
-#archive_pagespec: page(posts/*) and !*/Discussion
+archive_pagespec: page(design/assistant/blog/*)
 
 # listdirectives plugin
 # directory in srcdir that contains directive descriptions
