@@ -381,9 +381,9 @@ websetup_show_unsafe: '0'
 
 # calendar plugin
 # base of the archives hierarchy
-archivebase: design/assistant/blog/archives
+archivebase: ''
 # PageSpec of pages to include in the archives; used by ikiwiki-calendar command
-archive_pagespec: page(design/assistant/blog/*)
+archive_pagespec: ''
 
 # listdirectives plugin
 # directory in srcdir that contains directive descriptions
