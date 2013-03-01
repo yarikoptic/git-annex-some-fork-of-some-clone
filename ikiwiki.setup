@@ -68,6 +68,7 @@ add_plugins:
 - search
 - shortcut
 - calendar
+- txt
 # plugins to disable
 disable_plugins:
 - blogspam
