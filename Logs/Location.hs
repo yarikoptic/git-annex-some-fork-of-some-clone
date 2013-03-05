@@ -31,20 +31,17 @@ import Annex.UUID
 
 {- Log a change in the presence of a key's value in current repository. -}
 logStatus :: Key -> LogStatus -> Annex ()
-logStatus key status = do
-	u <- getUUID
-	logChange key u status
+logStatus key status = maybe noop (\u -> logChange key u status) =<< getUUID
 
 {- Log a change in the presence of a key's value in a repository. -}
 logChange :: Key -> UUID -> LogStatus -> Annex ()
-logChange key (UUID u) s = addLog (logFile key) =<< logNow s u
-logChange _ NoUUID _ = noop
+logChange key u s = addLog (logFile key) =<< logNow s (fromUUID u)
 
 {- Returns a list of repository UUIDs that, according to the log, have
  - the value of a key.
  -}
 loggedLocations :: Key -> Annex [UUID]
-loggedLocations key = map toUUID <$> (currentLog . logFile) key
+loggedLocations key = mapMaybe toUUID <$> (currentLog . logFile) key
 
 {- Finds all keys that have location log information.
  - (There may be duplicate keys in the list.) -}

@@ -38,8 +38,8 @@ remote = RemoteType {
 	setup = glacierSetup
 }
 
-gen :: Git.Repo -> UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
-gen r u c gc = new <$> remoteCost gc veryExpensiveRemoteCost
+gen :: Git.Repo -> Maybe UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
+gen r mu c gc = new <$> remoteCost gc veryExpensiveRemoteCost
   where
 	new cst = encryptableRemote c
 		(storeEncrypted this)
@@ -47,7 +47,7 @@ gen r u c gc = new <$> remoteCost gc veryExpensiveRemoteCost
 		this
 	  where
 		this = Remote {
-			uuid = u,
+			uuid = mu,
 			cost = cst,
 			name = Git.repoDescribe r,
 			storeKey = store this,
@@ -205,8 +205,8 @@ checkPresent r k = do
 glacierAction :: Remote -> [CommandParam] -> Annex Bool
 glacierAction r params = runGlacier (config r) (uuid r) params
 
-runGlacier :: RemoteConfig -> UUID -> [CommandParam] -> Annex Bool
-runGlacier c u params = go =<< glacierEnv c u
+runGlacier :: RemoteConfig -> Maybe UUID -> [CommandParam] -> Annex Bool
+runGlacier c mu params = go =<< glacierEnv c mu
   where
 	go Nothing = return False
 	go (Just e) = liftIO $
@@ -218,8 +218,9 @@ glacierParams c params = datacenter:params
 	datacenter = Param $ "--region=" ++
 		(fromJust $ M.lookup "datacenter" c)
 
-glacierEnv :: RemoteConfig -> UUID -> Annex (Maybe [(String, String)])
-glacierEnv c u = go =<< getRemoteCredPairFor "glacier" c creds
+glacierEnv :: RemoteConfig -> Maybe UUID -> Annex (Maybe [(String, String)])
+glacierEnv _ Nothing = return Nothing
+glacierEnv c (Just u) = go =<< getRemoteCredPairFor "glacier" c creds
   where
 	go Nothing = return Nothing
 	go (Just (user, pass)) = do
@@ -239,7 +240,7 @@ archive r k = fileprefix ++ key2file k
 
 -- glacier vault create will succeed even if the vault already exists.
 genVault :: RemoteConfig -> UUID -> Annex ()
-genVault c u = unlessM (runGlacier c u params) $
+genVault c u = unlessM (runGlacier c (Just u) params) $
 	error "Failed creating glacier vault."
   where
 	params = 

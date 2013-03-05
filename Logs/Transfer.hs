@@ -259,7 +259,7 @@ parseTransferFile file
 	| otherwise = case drop (length bits - 3) bits of
 		[direction, u, key] -> Transfer
 			<$> readLcDirection direction
-			<*> pure (toUUID u)
+			<*> toUUID u
 			<*> fileKey key
 		_ -> Nothing
   where

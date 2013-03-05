@@ -76,24 +76,24 @@ configRead :: Git.Repo -> Annex Git.Repo
 configRead r = do
 	g <- fromRepo id
 	let c = extractRemoteGitConfig g (Git.repoDescribe r)
-	u <- getRepoUUID r
-	case (repoCheap r, remoteAnnexIgnore c, u) of
+	mu <- getRepoUUID r
+	case (repoCheap r, remoteAnnexIgnore c, mu) of
 		(_, True, _) -> return r
 		(True, _, _) -> tryGitConfigRead r
-		(False, _, NoUUID) -> tryGitConfigRead r
+		(False, _, Nothing) -> tryGitConfigRead r
 		_ -> return r
 
 repoCheap :: Git.Repo -> Bool
 repoCheap = not . Git.repoIsUrl
 
-gen :: Git.Repo -> UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
-gen r u _ gc = go <$> remoteCost gc defcst
+gen :: Git.Repo -> Maybe UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
+gen r mu _ gc = go <$> remoteCost gc defcst
   where
 	defcst = if repoCheap r then cheapRemoteCost else expensiveRemoteCost
 	go cst = new
 	  where
 		new = Remote 
-			{ uuid = u
+			{ uuid = mu
 			, cost = cst
 			, name = Git.repoDescribe r
 			, storeKey = copyToRemote new
@@ -165,7 +165,7 @@ tryGitConfigRead r
  			fileEncoding h
 			val <- hGetContentsStrict h
 			r' <- Git.Config.store val r
-			when (getUncachedUUID r' == NoUUID && not (null val)) $ do
+			when (isNothing (getUncachedUUID r') && not (null val)) $ do
 				warningIO $ "Failed to get annex.uuid configuration of repository " ++ Git.repoDescribe r
 				warningIO $ "Instead, got: " ++ show val
 				warningIO $ "This is unexpected; please check the network transport!"
@@ -271,7 +271,7 @@ copyFromRemote :: Remote -> Key -> AssociatedFile -> FilePath -> Annex Bool
 copyFromRemote r key file dest
 	| not $ Git.repoIsUrl (repo r) = guardUsable (repo r) False $ do
 		let params = rsyncParams r
-		u <- getUUID
+		u <- ensureUUID
 		-- run copy from perspective of remote
 		liftIO $ onLocal (repo r) $ do
 			ensureInitialized
@@ -302,7 +302,7 @@ copyFromRemote r key file dest
 	 - transferinfo, so stderr is dropped and failure ignored.
 	 -}
 	feedprogressback a = do
-		u <- getUUID
+		u <- ensureUUID
 		let fields = (Fields.remoteUUID, fromUUID u)
 			: maybe [] (\f -> [(Fields.associatedFile, f)]) file
 		Just (cmd, params) <- git_annex_shell (repo r) "transferinfo" 
@@ -352,7 +352,7 @@ copyToRemote r key file p
 	copylocal Nothing = return False
 	copylocal (Just (object, checksuccess)) = do
 		let params = rsyncParams r
-		u <- getUUID
+		u <- ensureUUID
 		-- run copy from perspective of remote
 		liftIO $ onLocal (repo r) $ ifM (Annex.Content.inAnnex key)
 			( return False
@@ -404,7 +404,7 @@ rsyncOrCopyFile rsyncparams src dest p =
  - to either receive or send the key's content. -}
 rsyncParamsRemote :: Remote -> Direction -> Key -> FilePath -> AssociatedFile -> Annex [CommandParam]
 rsyncParamsRemote r direction key file afile = do
-	u <- getUUID
+	u <- ensureUUID
 	direct <- isDirect
 	let fields = (Fields.remoteUUID, fromUUID u)
 		: (Fields.direct, if direct then "1" else "")

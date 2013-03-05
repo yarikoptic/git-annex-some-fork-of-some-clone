@@ -36,7 +36,7 @@ lookupGroups u = (fromMaybe S.empty . M.lookup u) . groupsByUUID <$> groupMap
 
 {- Applies a set modifier to change the groups for a uuid in the groupLog. -}
 groupChange :: UUID -> (S.Set Group -> S.Set Group) -> Annex ()
-groupChange uuid@(UUID _) modifier = do
+groupChange uuid modifier = do
 	curr <- lookupGroups uuid
 	ts <- liftIO getPOSIXTime
 	Annex.Branch.change groupLog $
@@ -44,7 +44,6 @@ groupChange uuid@(UUID _) modifier = do
 			changeLog ts uuid (modifier curr) .
 				parseLog (Just . S.fromList . words)
 	Annex.changeState $ \s -> s { Annex.groupmap = Nothing }
-groupChange NoUUID _ = error "unknown UUID; cannot modify"
 
 groupSet :: UUID -> S.Set Group -> Annex ()
 groupSet u g = groupChange u (const g)

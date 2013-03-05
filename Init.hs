@@ -41,13 +41,12 @@ genDescription Nothing = do
 
 initialize :: Maybe String -> Annex ()
 initialize mdescription = do
-	prepUUID
+	u <- ensureUUID
 	setVersion defaultVersion
 	checkCrippledFileSystem
 	Annex.Branch.create
 	gitPreCommitHookWrite
 	createInodeSentinalFile
-	u <- getUUID
 	describeUUID u =<< genDescription mdescription
 
 uninitialize :: Annex ()

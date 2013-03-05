@@ -39,17 +39,17 @@ remote = RemoteType {
 	setup = bupSetup
 }
 
-gen :: Git.Repo -> UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
-gen r u c gc = do
+gen :: Git.Repo -> Maybe UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
+gen r mu c gc = do
 	bupr <- liftIO $ bup2GitRemote buprepo
 	cst <- remoteCost gc $
 		if bupLocal buprepo
 			then semiCheapRemoteCost
 			else expensiveRemoteCost
-	(u', bupr') <- getBupUUID bupr u
+	(mu', bupr') <- getBupUUID bupr mu
 	
 	let new = Remote
-		{ uuid = u'
+		{ uuid = mu'
 		, cost = cst
 		, name = Git.repoDescribe r
 		, storeKey = store new buprepo
@@ -223,20 +223,20 @@ onBupRemote r a command params = do
  - local bup repositories to see if they are available, and getting their
  - uuid (which may be different from the stored uuid for the bup remote).
  -
- - If a bup repository is not available, returns NoUUID.
+ - If a bup repository is not available, returns Nothing.
  - This will cause checkPresent to indicate nothing from the bup remote
  - is known to be present.
  -
  - Also, returns a version of the repo with config read, if it is local.
  -}
-getBupUUID :: Git.Repo -> UUID -> Annex (UUID, Git.Repo)
+getBupUUID :: Git.Repo -> Maybe UUID -> Annex (Maybe UUID, Git.Repo)
 getBupUUID r u
 	| Git.repoIsUrl r = return (u, r)
 	| otherwise = liftIO $ do
 		ret <- tryIO $ Git.Config.read r
 		case ret of
 			Right r' -> return (toUUID $ Git.Config.get "annex.uuid" "" r', r')
-			Left _ -> return (NoUUID, r)
+			Left _ -> return (Nothing, r)
 
 {- Converts a bup remote path spec into a Git.Repo. There are some
  - differences in path representation between git and bup. -}

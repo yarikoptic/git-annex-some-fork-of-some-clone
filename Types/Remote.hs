@@ -28,7 +28,7 @@ data RemoteTypeA a = RemoteType {
 	-- enumerates remotes of this type
 	enumerate :: a [Git.Repo],
 	-- generates a remote of this type
-	generate :: Git.Repo -> UUID -> RemoteConfig -> RemoteGitConfig -> a (RemoteA a),
+	generate :: Git.Repo -> (Maybe UUID) -> RemoteConfig -> RemoteGitConfig -> a (RemoteA a),
 	-- initializes or changes a remote
 	setup :: UUID -> RemoteConfig -> a RemoteConfig
 }
@@ -41,8 +41,9 @@ type AssociatedFile = Maybe FilePath
 
 {- An individual remote. -}
 data RemoteA a = Remote {
-	-- each Remote has a unique uuid
-	uuid :: UUID,
+	-- each available Remote has a unique uuid
+	-- remotes may be unavailable or not fully set up and have Nothing
+	uuid :: Maybe UUID,
 	-- each Remote has a human visible name
 	name :: String,
 	-- Remotes have a use cost; higher is more expensive

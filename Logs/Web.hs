@@ -22,7 +22,8 @@ type URLString = String
 
 -- Dummy uuid for the whole web. Do not alter.
 webUUID :: UUID
-webUUID = UUID "00000000-0000-0000-0000-000000000001"
+webUUID = fromMaybe (error "failed to construct webUUID") 
+	(toUUID "00000000-0000-0000-0000-000000000001")
 
 urlLog :: Key -> FilePath
 urlLog key = hashDirLower key </> keyFile key ++ ".log.web"

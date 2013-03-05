@@ -43,14 +43,13 @@ trustGet level = M.keys . M.filter (== level) <$> trustMap
 
 {- Changes the trust level for a uuid in the trustLog. -}
 trustSet :: UUID -> TrustLevel -> Annex ()
-trustSet uuid@(UUID _) level = do
+trustSet uuid level = do
 	ts <- liftIO getPOSIXTime
 	Annex.Branch.change trustLog $
 		showLog showTrustLog .
 			changeLog ts uuid level .
 				parseLog (Just . parseTrustLog)
 	Annex.changeState $ \s -> s { Annex.trustmap = Nothing }
-trustSet NoUUID _ = error "unknown UUID; cannot modify"
 
 {- Returns the TrustLevel of a given repo UUID. -}
 lookupTrust :: UUID -> Annex TrustLevel
@@ -89,9 +88,11 @@ trustMapLoad = do
 	Annex.changeState $ \s -> s { Annex.trustmap = Just m }
 	return m
   where
-	configuredtrust r = (\l -> Just (Types.Remote.uuid r, l))
-		=<< readTrustLevel 
-		=<< remoteAnnexTrustLevel (Types.Remote.gitconfig r)
+	configuredtrust r = case Types.Remote.uuid r of
+		Just u -> (\l -> Just (u, l))
+			=<< readTrustLevel 
+			=<< remoteAnnexTrustLevel (Types.Remote.gitconfig r)
+		Nothing -> Nothing
 
 {- Does not include forcetrust or git config values, just those from the
  - log file. -}

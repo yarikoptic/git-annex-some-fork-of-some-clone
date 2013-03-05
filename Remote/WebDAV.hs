@@ -50,8 +50,8 @@ remote = RemoteType {
 	setup = webdavSetup
 }
 
-gen :: Git.Repo -> UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
-gen r u c gc = new <$> remoteCost gc expensiveRemoteCost
+gen :: Git.Repo -> (Maybe UUID) -> RemoteConfig -> RemoteGitConfig -> Annex Remote
+gen r mu c gc = new <$> remoteCost gc expensiveRemoteCost
   where
 	new cst = encryptableRemote c
 		(storeEncrypted this)
@@ -59,7 +59,7 @@ gen r u c gc = new <$> remoteCost gc expensiveRemoteCost
 		this
 	  where
 		this = Remote {
-			uuid = u,
+			uuid = mu,
 			cost = cst,
 			name = Git.repoDescribe r,
 			storeKey = store this,
@@ -205,7 +205,9 @@ withStoredFiles r k baseurl user pass onerr a
 
 davAction :: Remote -> a -> ((DavUrl, DavUser, DavPass) -> Annex a) -> Annex a
 davAction r unconfigured action = do
-	mcreds <- getCreds (config r) (uuid r)
+	mcreds <- case uuid r of
+		Nothing -> return Nothing
+		Just u -> getCreds (config r) u
 	case (mcreds, M.lookup "url" $ config r) of
 		(Just (user, pass), Just url) ->
 			action (url, toDavUser user, toDavPass pass)

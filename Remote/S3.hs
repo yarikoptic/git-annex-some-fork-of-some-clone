@@ -37,8 +37,8 @@ remote = RemoteType {
 	setup = s3Setup
 }
 
-gen :: Git.Repo -> UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
-gen r u c gc = new <$> remoteCost gc expensiveRemoteCost
+gen :: Git.Repo -> Maybe UUID -> RemoteConfig -> RemoteGitConfig -> Annex Remote
+gen r mu c gc = new <$> remoteCost gc expensiveRemoteCost
   where
 	new cst = encryptableRemote c
 		(storeEncrypted this)
@@ -46,7 +46,7 @@ gen r u c gc = new <$> remoteCost gc expensiveRemoteCost
 		this
 	  where
 		this = Remote {
-			uuid = u,
+			uuid = mu,
 			cost = cst,
 			name = Git.repoDescribe r,
 			storeKey = store this,
@@ -206,7 +206,9 @@ s3Bool (Left e) = s3Warning e
 s3Action :: Remote -> a -> ((AWSConnection, String) -> Annex a) -> Annex a
 s3Action r noconn action = do
 	let bucket = M.lookup "bucket" $ config r
-	conn <- s3Connection (config r) (uuid r)
+	conn <- case uuid r of
+		Nothing -> return Nothing
+		Just u -> s3Connection (config r) u
 	case (bucket, conn) of
 		(Just b, Just c) -> action (c, b)
 		_ -> return noconn

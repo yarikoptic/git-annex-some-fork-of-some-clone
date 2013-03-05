@@ -32,20 +32,20 @@ git_annex_shell :: Git.Repo -> String -> [CommandParam] -> [(Field, String)] -> 
 git_annex_shell r command params fields
 	| not $ Git.repoIsUrl r = return $ Just (shellcmd, shellopts ++ fieldopts)
 	| Git.repoIsSsh r = do
-		uuid <- getRepoUUID r
-		sshparams <- sshToRepo r [Param $ sshcmd uuid ]
+		mu <- getRepoUUID r
+		sshparams <- sshToRepo r [Param $ sshcmd mu ]
 		return $ Just ("ssh", sshparams)
 	| otherwise = return Nothing
   where
 	dir = Git.repoPath r
 	shellcmd = "git-annex-shell"
 	shellopts = Param command : File dir : params
-	sshcmd uuid = unwords $
+	sshcmd mu = unwords $
 		shellcmd : map shellEscape (toCommand shellopts) ++
-		uuidcheck uuid ++
+		uuidcheck mu ++
 		map shellEscape (toCommand fieldopts)
-	uuidcheck NoUUID = []
-	uuidcheck (UUID u) = ["--uuid", u]
+	uuidcheck (Just u) = ["--uuid", fromUUID u]
+	uuidcheck Nothing = []
 	fieldopts
 		| null fields = []
 		| otherwise = fieldsep : map fieldopt fields ++ [fieldsep]

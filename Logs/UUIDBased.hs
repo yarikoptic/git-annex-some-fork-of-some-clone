@@ -64,11 +64,12 @@ parseLogWithUUID parser = M.fromListWith best . mapMaybe parse . lines
   where
 	parse line
 		| null ws = Nothing
-		| otherwise = parser u (unwords info) >>= makepair
+		| otherwise = case toUUID $ Prelude.head ws of
+			Just u -> parser u (unwords info) >>= makepair u
+			Nothing -> Nothing
 	  where
-		makepair v = Just (u, LogEntry ts v)
+		makepair u v = Just (u, LogEntry ts v)
 		ws = words line
-		u = toUUID $ Prelude.head ws
 		t = Prelude.last ws
 		ts
 			| tskey `isPrefixOf` t =
@@ -105,10 +106,13 @@ prop_TimeStamp_sane :: Bool
 prop_TimeStamp_sane = Unknown < Date 1
 
 prop_addLog_sane :: Bool
-prop_addLog_sane = newWins && newestWins
+prop_addLog_sane = isJust mu && newWins && newestWins
   where
-	newWins = addLog (UUID "foo") (LogEntry (Date 1) "new") l == l2
-	newestWins = addLog (UUID "foo") (LogEntry (Date 1) "newest") l2 /= l2
+	newWins = addLog (u) (LogEntry (Date 1) "new") l == l2
+	newestWins = addLog (u) (LogEntry (Date 1) "newest") l2 /= l2
 
-	l = M.fromList [(UUID "foo", LogEntry (Date 0) "old")]
-	l2 = M.fromList [(UUID "foo", LogEntry (Date 1) "new")]
+	l = M.fromList [(u, LogEntry (Date 0) "old")]
+	l2 = M.fromList [(u, LogEntry (Date 1) "new")]
+
+	mu = toUUID "foo"
+	u = fromMaybe (error "failed to make uuid") mu

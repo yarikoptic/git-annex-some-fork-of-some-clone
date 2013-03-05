@@ -56,8 +56,9 @@ import Remote.List
 
 {- Map from UUIDs of Remotes to a calculated value. -}
 remoteMap :: (Remote -> a) -> Annex (M.Map UUID a)
-remoteMap c = M.fromList . map (\r -> (uuid r, c r)) .
-	filter (\r -> uuid r /= NoUUID) <$> remoteList
+remoteMap c = M.fromList . mapMaybe topair <$> remoteList
+  where
+	topair r = maybe Nothing (\u -> Just (u, c r)) (uuid r)
 
 {- Map of UUIDs of remotes and their descriptions.
  - The names of Remotes are added to suppliment any description that has
@@ -82,7 +83,7 @@ byName' n = handle . filter matching <$> remoteList
   where
 	handle [] = Left $ "there is no available git remote named \"" ++ n ++ "\""
 	handle (match:_)
-		| uuid match == NoUUID = Left $ "cannot determine uuid for " ++ name match
+		| isNothing (uuid match) = Left $ "cannot determine uuid for " ++ name match
 		| otherwise = Right match
 	matching r = n == name r || toUUID n == uuid r
 
@@ -90,19 +91,21 @@ byName' n = handle . filter matching <$> remoteList
  - and returns its UUID. Finds even remotes that are not configured in
  - .git/config. -}
 nameToUUID :: String -> Annex UUID
-nameToUUID "." = getUUID -- special case for current repo
-nameToUUID "here" = getUUID
+nameToUUID "." = ensureUUID -- special case for current repo
+nameToUUID "here" = ensureUUID
 nameToUUID "" = error "no remote specified"
 nameToUUID n = byName' n >>= go
   where
-	go (Right r) = return $ uuid r
+	go (Right r) = return $ fromMaybe (error $ "cannot determine uuid for " ++ name r) (uuid r)
 	go (Left e) = fromMaybe (error e) <$> bydescription
 	bydescription = do
 		m <- uuidMap
 		case M.lookup n $ transform swap m of
 			Just u -> return $ Just u
 			Nothing -> return $ byuuid m
-	byuuid m = M.lookup (toUUID n) $ transform double m
+	byuuid m = case toUUID n of
+		Just u -> M.lookup u $ transform double m
+		Nothing -> Nothing
 	transform a = M.fromList . map a . M.toList
 	double (a, _) = (a, a)
 
@@ -112,7 +115,7 @@ nameToUUID n = byName' n >>= go
  - of the UUIDs. -}
 prettyPrintUUIDs :: String -> [UUID] -> Annex String
 prettyPrintUUIDs desc uuids = do
-	hereu <- getUUID
+	hereu <- ensureUUID
 	m <- uuidDescriptions
 	maybeShowJSON [(desc, map (jsonify m hereu) uuids)]
 	return $ unwords $ map (\u -> "\t" ++ prettify m hereu u ++ "\n") uuids
@@ -137,7 +140,7 @@ prettyPrintUUIDs desc uuids = do
 {- List of remote names and/or descriptions, for human display.  -}
 prettyListUUIDs :: [UUID] -> Annex [String]
 prettyListUUIDs uuids = do
-	hereu <- getUUID
+	hereu <- ensureUUID
 	m <- uuidDescriptions
 	return $ map (\u -> prettify m hereu u) uuids
   where
