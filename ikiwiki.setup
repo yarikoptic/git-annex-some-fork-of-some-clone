@@ -348,7 +348,7 @@ omega_cgi: /usr/lib/cgi-bin/omega/omega
 
 # theme plugin
 # name of theme to enable
-#theme: actiontabs
+theme: actiontabs
 
 # websetup plugin
 # list of plugins that cannot be enabled/disabled via the web interface
