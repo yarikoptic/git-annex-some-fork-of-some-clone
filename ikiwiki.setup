@@ -170,7 +170,7 @@ git_push_to:
 
 # htmlscrubber plugin
 # PageSpec specifying pages not to scrub
-htmlscrubber_skip: testimonials
+htmlscrubber_skip: testimonials or builds
 
 # ikiwikihosting plugin
 # list of urls that alias to the main url
@@ -226,7 +226,7 @@ blogspam_pagespec: postcomment(*)
 
 # lockedit plugin
 # PageSpec controlling which pages are locked
-locked_pages: testimonials
+locked_pages: testimonials or builds
 
 # moderatedcomments plugin
 # PageSpec matching users or comment locations to moderate
