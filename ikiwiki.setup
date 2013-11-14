@@ -32,7 +32,7 @@ cgi_wrappermode: '0755'
 # number of seconds to delay CGI requests when overloaded
 cgi_overload_delay: 10
 # message to display when overloaded (may contain html)
-cgi_overload_message: 'Little busy with polls right now. Please wait..'
+cgi_overload_message: 'Please wait..'
 # rcs backend to use
 rcs: git
 # plugins to add to the default configuration
