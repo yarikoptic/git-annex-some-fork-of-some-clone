@@ -10,7 +10,7 @@
 # name of the wiki
 wikiname: git-annex
 # contact email for wiki
-only_committed_changes: 1
+only_committed_changes: 0
 adminemail: joey@kitenet.net
 # users who are wiki admins
 adminuser:
