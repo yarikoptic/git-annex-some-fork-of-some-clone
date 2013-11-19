@@ -16,7 +16,8 @@ adminuser:
 - http://joey.kitenet.net/
 - http://joeyh.name/
 # users who are banned from the wiki
-banned_users: []
+banned_users:
+- https://domtheo.myopenid.com/
 # where the source of the wiki is located
 srcdir: /home/b-git-annex/source/doc
 # where to build the wiki
