@@ -18,6 +18,8 @@ adminuser:
 # users who are banned from the wiki
 banned_users:
 - https://domtheo.myopenid.com/
+- https://www.google.com/accounts/o8/id?id=AItOawkTn3HixU2KJIvvLXLqwYUzlDGDtYf43GE
+- ip(182.253.50.245)
 # where the source of the wiki is located
 srcdir: /home/b-git-annex/source/doc
 # where to build the wiki
