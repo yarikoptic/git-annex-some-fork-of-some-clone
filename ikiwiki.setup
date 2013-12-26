@@ -260,7 +260,7 @@ openid_cgiurl: http://git-annex.branchable.com/ikiwiki.cgi
 
 # highlight plugin
 # types of source files to syntax highlight
-tohighlight: ''
+tohighlight: '.sh .hs .pl .c'
 # location of highlight's filetypes.conf
 filetypes_conf: /etc/highlight/filetypes.conf
 # location of highlight's langDefs directory
