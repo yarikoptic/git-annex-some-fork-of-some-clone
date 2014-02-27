@@ -59,12 +59,16 @@ Flag Android
   Description: Cross building for Android
   Default: False
 
-Flag WinSplice
-  Description: Building without XMPP library but with UI, to get TH splices (Windows hack)
-  Default: False
-
 Flag AndroidSplice
   Description: Building to get TH splices for Android
+  Default: False
+
+Flag Windows
+  Description: Building for Windows, with EvilSplicer
+  Default: False
+
+Flag WindowsSplice
+  Description: Building without XMPP library but with UI, to get TH splices (Windows hack)
   Default: False
 
 Flag TestSuite
@@ -176,6 +180,11 @@ Executable git-annex
     CPP-Options: -D__ANDROID__ -DANDROID_SPLICES -D__NO_TH__
   if flag(AndroidSplice)
     CPP-Options: -DANDROID_SPLICES
+  
+  if flag(Windows)
+    CPP-Options: -D__NO_TH__
+  if flag(WindowsSplice)
+    CPP-Options: -DWITH_XMPP_UI -DWITH_WINSPLICE
 
   if flag(Webapp)
     Build-Depends:
@@ -192,9 +201,6 @@ Executable git-annex
   if flag(XMPP)
     Build-Depends: network-protocol-xmpp, gnutls (>= 0.1.4), xml-types
     CPP-Options: -DWITH_XMPP -DWITH_XMPP_UI
-
-  if flag(WinSplice)
-    CPP-Options: -DWITH_XMPP_UI -DWITH_WINSPLICE
 
   if flag(DNS)
     Build-Depends: dns
