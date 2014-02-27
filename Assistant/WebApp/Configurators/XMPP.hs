@@ -14,27 +14,27 @@ import Assistant.WebApp.Common
 import Assistant.WebApp.Notifications
 import Utility.NotificationBroadcaster
 #ifdef WITH_XMPP
-import qualified Remote
 import Assistant.XMPP.Client
 import Assistant.XMPP.Buddies
-import Assistant.Types.Buddies
-import Assistant.NetMessager
-import Assistant.Alert
-import Assistant.DaemonStatus
-import Assistant.WebApp.RepoList
-import Assistant.WebApp.Configurators
 import Assistant.XMPP
-#endif
-
-#ifdef WITH_XMPP
 import Network.Protocol.XMPP
 import Network
+#endif
+#ifdef WITH_XMPP_UI
+import qualified Remote
+import Assistant.Alert
+import Assistant.DaemonStatus
+import Assistant.NetMessager
+import Assistant.XMPP.Creds
+import Assistant.Types.Buddies
+import Assistant.WebApp.RepoList
+import Assistant.WebApp.Configurators
 import qualified Data.Text as T
 #endif
 
 {- Displays an alert suggesting to configure XMPP. -}
 xmppNeeded :: Handler ()
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 xmppNeeded = whenM (isNothing <$> liftAnnex getXMPPCreds) $ do
 	urlrender <- getUrlRender
 	void $ liftAssistant $ do
@@ -52,7 +52,7 @@ xmppNeeded = return ()
 {- When appropriate, displays an alert suggesting to configure a cloud repo
  - to suppliment an XMPP remote. -}
 checkCloudRepos :: UrlRenderer -> Remote -> Assistant ()
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 checkCloudRepos urlrenderer r =
 	unlessM (syncingToCloudRemote <$> getDaemonStatus) $ do
 		buddyname <- getBuddyName $ Remote.uuid r
@@ -63,10 +63,11 @@ checkCloudRepos urlrenderer r =
 checkCloudRepos _ _ = noop
 #endif
 
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 {- Returns the name of the friend corresponding to a
  - repository's UUID, but not if it's our name. -}
 getBuddyName :: UUID -> Assistant (Maybe String)
+#ifdef WITH_XMPP
 getBuddyName u = go =<< getclientjid
   where
 	go Nothing = return Nothing
@@ -78,10 +79,13 @@ getBuddyName u = go =<< getclientjid
 		<$> getXMPPRemotes
 	getclientjid = maybe Nothing parseJID . xmppClientID
 		<$> getDaemonStatus
+#else
+getBuddyName _ = pure Nothing
+#endif
 #endif
 
 getNeedCloudRepoR :: UUID -> Handler Html
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 getNeedCloudRepoR for = page "Cloud repository needed" (Just Configuration) $ do
 	buddyname <- liftAssistant $ getBuddyName for
 	$(widgetFile "configurators/xmpp/needcloudrepo")
@@ -109,7 +113,7 @@ postXMPPConfigForPairSelfR :: Handler Html
 postXMPPConfigForPairSelfR = xmppform StartXMPPPairSelfR
 
 xmppform :: Route WebApp -> Handler Html
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 xmppform next = xmppPage $ do
 	((result, form), enctype) <- liftH $ do
 		oldcreds <- liftAnnex getXMPPCreds
@@ -144,13 +148,10 @@ getBuddyListR nid = do
 buddyListDisplay :: Widget
 buddyListDisplay = do
 	autoUpdate ident NotifierBuddyListR (10 :: Int) (10 :: Int)
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 	myjid <- liftAssistant $ xmppClientID <$> getDaemonStatus
 	let isself (BuddyKey b) = Just b == myjid
-	buddies <- liftAssistant $ do
-		pairedwith <- map fst <$> getXMPPRemotes
-		catMaybes . map (buddySummary pairedwith)
-			<$> (getBuddyList <<~ buddyList)
+	buddies <- liftAssistant getBuddyInfo
 	$(widgetFile "configurators/xmpp/buddylist")
 #else
 	noop
@@ -158,14 +159,28 @@ buddyListDisplay = do
   where
 	ident = "buddylist"
 
+#ifdef WITH_XMPP_UI
+getBuddyInfo :: Assistant [(Text, Bool, Bool, Bool, BuddyKey)]
+getBuddyInfo = do
 #ifdef WITH_XMPP
+	pairedwith <- map fst <$> getXMPPRemotes
+	catMaybes . map (buddySummary pairedwith)
+		<$> (getBuddyList <<~ buddyList)
+#else
+	pure []
+#endif
+#endif
 
+#ifdef WITH_XMPP
 getXMPPRemotes :: Assistant [(JID, Remote)]
 getXMPPRemotes = catMaybes . map pair . filter Remote.isXMPPRemote . syncGitRemotes
 	<$> getDaemonStatus
   where
   	pair r = maybe Nothing (\jid -> Just (jid, r)) $
 		parseJID $ getXMPPClientID r
+#endif
+
+#ifdef WITH_XMPP_UI
 
 data XMPPForm = XMPPForm
 	{ formJID :: Text
@@ -180,12 +195,18 @@ xmppAForm def = XMPPForm
 	<*> areq passwordField "Password" Nothing
 
 jidField :: MkField Text
-jidField = checkBool (isJust . parseJID) bad textField
+jidField = checkBool checkjid bad textField
   where
 	bad :: Text
 	bad = "This should look like an email address.."
+#ifdef WITH_XMPP
+	checkjid = isJust . parseJID
+#else
+	checkjid = not . T.null
+#endif
 
 validateForm :: XMPPForm -> IO (Either String XMPPCreds)
+#ifdef WITH_XMPP
 validateForm f = do
 	let jid = fromMaybe (error "bad JID") $ parseJID (formJID f)
 	let username = fromMaybe "" (strNode <$> jidNode jid)
@@ -196,8 +217,12 @@ validateForm f = do
 		, xmppPort = 5222
 		, xmppJID = formJID f
 		}
+#else
+validateForm _ = pure (Left undefined)
+#endif
 
 testXMPP :: XMPPCreds -> IO (Either String XMPPCreds)
+#ifdef WITH_XMPP
 testXMPP creds = do
 	(good, bad) <- partition (either (const False) (const True) . snd) 
 		<$> connectXMPP creds (const noop)
@@ -217,6 +242,10 @@ testXMPP creds = do
 	showport (PortNumber n) = show n
 	showport (Service s) = s
 	showport (UnixSocket s) = s
+#else
+testXMPP _ = pure (Left undefined)
+#endif
+
 #endif
 
 xmppPage :: Widget -> Handler Html

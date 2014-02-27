@@ -59,6 +59,10 @@ Flag Android
   Description: Cross building for Android
   Default: False
 
+Flag XMPPSplice
+  Description: Building without XMPP library but with UI, to get TH splices (Windows hack)
+  Default: False
+
 Flag AndroidSplice
   Description: Building to get TH splices for Android
   Default: False
@@ -185,9 +189,11 @@ Executable git-annex
     Build-Depends: network-multicast, network-info
     CPP-Options: -DWITH_PAIRING
 
-  if flag(XMPP) && (! os(windows))
+  if flag(XMPP)
     Build-Depends: network-protocol-xmpp, gnutls (>= 0.1.4), xml-types
-    CPP-Options: -DWITH_XMPP
+    CPP-Options: -DWITH_XMPP -DWITH_XMPP_UI
+  if flag(XMPPSplice)
+    CPP-Options: -DWITH_XMPP_UI
 
   if flag(DNS)
     Build-Depends: dns

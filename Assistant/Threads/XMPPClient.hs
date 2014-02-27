@@ -10,6 +10,7 @@ module Assistant.Threads.XMPPClient where
 import Assistant.Common
 import Assistant.XMPP
 import Assistant.XMPP.Client
+import Assistant.XMPP.Creds
 import Assistant.NetMessager
 import Assistant.Types.NetMessager
 import Assistant.Types.Buddies

@@ -8,24 +8,14 @@
 module Assistant.XMPP.Client where
 
 import Assistant.Common
+import Assistant.XMPP.Creds
 import Utility.SRV
-import Creds
 
 import Network.Protocol.XMPP
 import Network
 import Control.Concurrent
 import qualified Data.Text as T
 import Control.Exception (SomeException)
-
-{- Everything we need to know to connect to an XMPP server. -}
-data XMPPCreds = XMPPCreds
-	{ xmppUsername :: T.Text
-	, xmppPassword :: T.Text
-	, xmppHostname :: HostName
-	, xmppPort :: Int
-	, xmppJID :: T.Text
-	}
-	deriving (Read, Show)
 
 connectXMPP :: XMPPCreds -> (JID -> XMPP a) -> IO [(HostPort, Either SomeException ())]
 connectXMPP c a = case parseJID (xmppJID c) of
@@ -71,14 +61,3 @@ connectXMPP' jid c a = reverse <$> (handle =<< lookupSRV srvrecord)
 {- XMPP runClient, that throws errors rather than returning an Either -}
 runClientError :: Server -> JID -> T.Text -> T.Text -> XMPP a -> IO a
 runClientError s j u p x = either (error . show) return =<< runClient s j u p x
-
-getXMPPCreds :: Annex (Maybe XMPPCreds)
-getXMPPCreds = parse <$> readCacheCreds xmppCredsFile
-  where
-	parse s = readish =<< s
-
-setXMPPCreds :: XMPPCreds -> Annex ()
-setXMPPCreds creds = writeCacheCreds (show creds) xmppCredsFile
-
-xmppCredsFile :: FilePath
-xmppCredsFile = "xmpp"

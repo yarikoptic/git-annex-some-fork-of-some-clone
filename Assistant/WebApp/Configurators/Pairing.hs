@@ -24,12 +24,14 @@ import Utility.Verifiable
 import Utility.Network
 #endif
 #ifdef WITH_XMPP
-import Assistant.XMPP.Client
-import Assistant.XMPP.Buddies
 import Assistant.XMPP.Git
 import Network.Protocol.XMPP
-import Assistant.Types.NetMessager
+import Assistant.XMPP.Buddies
+#endif
+#ifdef WITH_XMPP_UI
+import Assistant.XMPP.Creds
 import Assistant.NetMessager
+import Assistant.Types.NetMessager
 import Assistant.WebApp.RepoList
 import Assistant.WebApp.Configurators
 import Assistant.WebApp.Configurators.XMPP
@@ -50,7 +52,7 @@ import qualified Data.Set as S
 #endif
 
 getStartXMPPPairFriendR :: Handler Html
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 getStartXMPPPairFriendR = ifM (isJust <$> liftAnnex getXMPPCreds)
 	( do
 		{- Ask buddies to send presence info, to get
@@ -70,7 +72,7 @@ noXMPPPairing = noPairing "XMPP"
 #endif
 
 getStartXMPPPairSelfR :: Handler Html
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 getStartXMPPPairSelfR = go =<< liftAnnex getXMPPCreds
   where
   	go Nothing = do
@@ -95,18 +97,27 @@ getRunningXMPPPairSelfR = sendXMPPPairRequest Nothing
 
 {- Sends a XMPP pair request, to a buddy or to self. -}
 sendXMPPPairRequest :: Maybe BuddyKey -> Handler Html
-#ifdef WITH_XMPP
+#ifdef WITH_XMPP_UI
 sendXMPPPairRequest mbid = do
+#ifdef WITH_XMPP
 	bid <- maybe getself return mbid
 	buddy <- liftAssistant $ getBuddy bid <<~ buddyList
 	go $ S.toList . buddyAssistants <$> buddy
+#else
+	go undefined
+#endif
   where
+#ifdef WITH_XMPP
+	getself = maybe (error "XMPP not configured")
+			(return . BuddyKey . xmppJID)
+				=<< liftAnnex getXMPPCreds
 	go (Just (clients@((Client exemplar):_))) = do
 		u <- liftAnnex getUUID
 		liftAssistant $ forM_ clients $ \(Client c) -> sendNetMessage $
 			PairingNotification PairReq (formatJID c) u
 		xmppPairStatus True $
 			if selfpair then Nothing else Just exemplar
+#endif
 	go _
 		{- Nudge the user to turn on their other device. -}
 		| selfpair = do
@@ -117,9 +128,6 @@ sendXMPPPairRequest mbid = do
 		 - Go back to buddy list. -}
 		| otherwise = redirect StartXMPPPairFriendR
 	selfpair = isNothing mbid
-	getself = maybe (error "XMPP not configured")
-			(return . BuddyKey . xmppJID)
-				=<< liftAnnex getXMPPCreds
 #else
 sendXMPPPairRequest _ = noXMPPPairing
 #endif
@@ -160,11 +168,17 @@ postFinishLocalPairR _ = noLocalPairing
 #endif
 
 getConfirmXMPPPairFriendR :: PairKey -> Handler Html
+#ifdef WITH_XMPP_UI
+getConfirmXMPPPairFriendR pairkey@(PairKey _ t) =
 #ifdef WITH_XMPP
-getConfirmXMPPPairFriendR pairkey@(PairKey _ t) = case parseJID t of
-	Nothing -> error "bad JID"
-	Just theirjid -> pairPage $ do
-		let name = buddyName theirjid
+	case parseJID t of
+		Nothing -> error "bad JID"
+		Just theirjid -> go (buddyName theirjid)
+#else
+	go (T.pack "dummy")
+#endif
+  where
+	go name = pairPage $
 		$(widgetFile "configurators/pairing/xmpp/friend/confirm")
 #else
 getConfirmXMPPPairFriendR _ = noXMPPPairing
@@ -182,15 +196,23 @@ getFinishXMPPPairFriendR (PairKey theiruuid t) = case parseJID t of
 			finishXMPPPairing theirjid theiruuid
 		xmppPairStatus False $ Just theirjid
 #else
+#ifdef WITH_XMPP_UI
+getFinishXMPPPairFriendR _ = xmppPairStatus' False Nothing
+#else
 getFinishXMPPPairFriendR _ = noXMPPPairing
+#endif
 #endif
 
 {- Displays a page indicating pairing status and 
  - prompting to set up cloud repositories. -}
 #ifdef WITH_XMPP
 xmppPairStatus :: Bool -> Maybe JID -> Handler Html
-xmppPairStatus inprogress theirjid = pairPage $ do
-	let friend = buddyName <$> theirjid
+xmppPairStatus inprogress theirjid = 
+	xmppPairStatus' inprogress (buddyName <$> theirjid)
+#endif
+#ifdef WITH_XMPP_UI
+xmppPairStatus' :: Bool -> Maybe T.Text -> Handler Html
+xmppPairStatus' inprogress friend = pairPage $ do
 	$(widgetFile "configurators/pairing/xmpp/end")
 #endif
 
