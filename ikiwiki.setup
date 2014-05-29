@@ -21,6 +21,7 @@ banned_users:
 - https://www.google.com/accounts/o8/id?id=AItOawkTn3HixU2KJIvvLXLqwYUzlDGDtYf43GE
 - ip(182.253.50.245)
 - https://www.google.com/accounts/o8/id?id=AItOawlAx-pYJ036y2lgKtLJvXm7s-HFRBiJlZY
+- Balan
 # where the source of the wiki is located
 srcdir: /home/b-git-annex/source/doc
 # where to build the wiki
