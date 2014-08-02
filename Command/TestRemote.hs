@@ -32,10 +32,14 @@ import Test.Tasty
 import Test.Tasty.Runners
 import Test.Tasty.HUnit
 import Control.Exception
+import Control.Concurrent
+import Control.Concurrent.Async
 import "crypto-api" Crypto.Random
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Map as M
+import Data.Time.Clock
+import Data.Tuple.Utils
 
 def :: [Command]
 def = [ withOptions [sizeOption] $
@@ -106,7 +110,11 @@ test :: Annex.AnnexState -> Remote -> Key -> [TestTree]
 test st r k =
 	[ check "removeKey when not present" remove
 	, present False
-	, check "storeKey" store
+	, testCase "storeKey is atomic" $ do
+		v <- runcheck $ storeKeyIsAtomic r k
+		case v of
+			Nothing -> warningIO "storeKey succeeded, but in too little time to verify that it was atomic. Increase --size to check."
+			Just b -> b @? "failed"
 	, present True
 	, check "storeKey when already present" store
 	, present True
@@ -141,8 +149,8 @@ test st r k =
 	, present False
 	]
   where
-	check desc a = testCase desc $
-		Annex.eval st (Annex.setOutput QuietOutput >> a) @? "failed"
+	check desc a = testCase desc $ runcheck a @? "failed"
+	runcheck a = Annex.eval st (Annex.setOutput QuietOutput >> a)
 	present b = check ("present " ++ show b) $
 		(== Right b) <$> Remote.hasKey r k
 	fsck = case maybeLookupBackendName (keyBackendName k) of
@@ -154,6 +162,54 @@ test st r k =
 		Remote.retrieveKeyFile r k Nothing dest nullMeterUpdate
 	store = Remote.storeKey r k Nothing nullMeterUpdate
 	remove = Remote.removeKey r k
+
+-- Test that storeKey does not cause hasKey to report the keys is
+-- present until it's fully stored the object.
+--
+-- Method: Start a watching thread which checks hasKey repeatedly
+-- and records the results along with the timestamp when hasKey was called.
+-- Once the storeKey is done (and it must succeed), analize the record.
+--
+-- Some part of it will be after storeKey had fully sent the object,
+-- so will show the object was present. So, throw out the last
+-- half of the record, as well as throwing out any records
+-- that are within 1 second of the end.
+storeKeyIsAtomic :: Remote -> Key -> Annex (Maybe Bool)
+storeKeyIsAtomic r k = do
+	stopsignal <- liftIO newEmptyMVar
+
+	-- To run the checker in a separate thread, need a new Annex state.
+	st <- liftIO . Annex.new =<< Annex.fromRepo id
+	c <- liftIO $ async $ checker st stopsignal []
+
+	starttime <- liftIO getCurrentTime
+	unlessM (Remote.storeKey r k Nothing nullMeterUpdate) $
+		error "storeKey failed"
+	liftIO $ do
+		endtime <- getCurrentTime
+		putMVar stopsignal ()
+		record <- wait c
+		return $ analize starttime endtime record
+  where
+	checker st stopsignal l = do
+		starttime <- getCurrentTime
+		(haskey, st') <- Annex.run st $
+			(== Right True) <$> Remote.hasKey r k
+		endtime <- getCurrentTime
+		let l' = (haskey, starttime, endtime) : l
+		threadDelay 10000 -- 1/100th of a second
+		ifM (isEmptyMVar stopsignal)
+			( checker st' stopsignal l'
+			, return (reverse l')
+			)
+
+	analize starttime endtime record
+		| null startrecord = Nothing
+		| otherwise = Just $ all (not . fst3) startrecord
+	  where
+		middle = ((endtime `diffUTCTime` starttime) / 2) `addUTCTime` starttime
+		nearend = (-1) `addUTCTime` endtime
+		startrecord = filter (\(_, st, et) -> st < middle && et < nearend) record
 
 cleanup :: [Remote] -> [Key] -> Bool -> CommandCleanup
 cleanup rs ks ok = do
