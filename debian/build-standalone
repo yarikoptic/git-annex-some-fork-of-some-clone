@@ -2,6 +2,7 @@
 
 set -eu
 
+umask 022
 
 git checkout debian/changelog
 git merge origin/master
