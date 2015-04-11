@@ -3,7 +3,16 @@
 export CABAL=debian/cabal-wrapper
 
 # Do use the changelog's version number, rather than making one up.
-export RELEASE_BUILD=1
+export RELEASE_BUILD=0
 
 %:
 	dh $@
+
+override_dh_auto_build:
+	make linuxstandalone
+
+override_dh_auto_install:
+	: # nothing to do, we just need to copy the beast, as instructed in debian/install
+
+override_dh_fixperms:
+	dh_fixperms -Xld-linux

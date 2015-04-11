@@ -88,10 +88,12 @@ Vcs-Git: git://git.kitenet.net/git-annex
 Homepage: http://git-annex.branchable.com/
 XS-Testsuite: autopkgtest
 
-Package: git-annex
+Package: git-annex-standalone
 Architecture: any
 Section: utils
-Depends: ${misc:Depends}, ${shlibs:Depends},
+Conflicts: git-annex
+Provides: git-annex
+Depends: ${misc:Depends},
 	git (>= 1:1.8.1),
 	rsync,
 	wget,
@@ -111,7 +113,7 @@ Suggests:
 	bup,
 	tahoe-lafs,
 	libnss-mdns,
-Description: manage files with git, without checking their contents into git
+Description: manage files with git, without checking their contents into git -- standalone build
  git-annex allows managing files with git, without checking the file
  contents into git. While that may seem paradoxical, it is useful when
  dealing with files larger than git can currently easily handle, whether due
@@ -129,3 +131,7 @@ Description: manage files with git, without checking their contents into git
  noticing when files are changed, and automatically committing them
  to git and transferring them to other computers. The git-annex webapp
  makes it easy to set up and use git-annex this way.
+ .
+ This package provides a standalone bundle build of git-annex, which
+ should be installable on any more or less recent Debian or Ubuntu
+ release.

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -eu
+
+
+git checkout debian/changelog
+git merge origin/master
+
+ANNEX_VERSION=$(git describe `git merge-base HEAD origin/master`)
+ANNEX_NDVERSION=$( echo ${ANNEX_VERSION} | sed -e 's,-,+git,' -e 's,$,-1~ndall+1,')
+
+dch --noconf -v ${ANNEX_NDVERSION} \
+    --force-bad-version --force-distribution -D neurodebian "Backported fresh snapshot"
+
+dpkg-buildpackage -uc -us -rfakeroot
