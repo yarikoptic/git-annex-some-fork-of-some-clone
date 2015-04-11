@@ -1,11 +1,14 @@
 #!/bin/bash
-
+#
+# A little helper script to build a package with standalone git-annex
+# It relies on being run within git-annex Git repository
+#
 set -eu
 
 umask 022
 
 git checkout debian/changelog
-git merge origin/master
+# git merge origin/master
 
 ANNEX_VERSION=$(git describe `git merge-base HEAD origin/master`)
 ANNEX_NDVERSION=$( echo ${ANNEX_VERSION} | sed -e 's,-,+git,' -e 's,$,-1~ndall+1,')
