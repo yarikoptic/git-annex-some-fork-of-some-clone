@@ -94,6 +94,7 @@ Section: utils
 Conflicts: git-annex
 Provides: git-annex
 Depends: ${misc:Depends},
+	git,
 	rsync,
 	wget,
 	curl,
@@ -108,7 +109,6 @@ Recommends:
 	aria2,
 	bittornado | bittorrent,
 Suggests:
-	git,
 	graphviz,
 	bup,
 	tahoe-lafs,
