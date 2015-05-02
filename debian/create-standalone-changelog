@@ -13,5 +13,7 @@ ANNEX_VERSION=$(runghc Build/BuildVersion.hs)
 
 ANNEX_NDVERSION=$( echo ${ANNEX_VERSION} | sed -e 's,-,+git,' -e 's,$,-1~ndall+1,')
 
+echo "I: Building 'NeuroDebian' flavor version $ANNEX_NDVERSION for stock $ANNEX_VERSION"
+
 dch --noconf -v ${ANNEX_NDVERSION} \
     --force-bad-version --force-distribution -D neurodebian "Backported fresh snapshot"

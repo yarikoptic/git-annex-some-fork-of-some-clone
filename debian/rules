@@ -2,18 +2,50 @@
 
 export CABAL=debian/cabal-wrapper
 
+STANDALONE_BUILD=$(shell grep -qe '^Package: git-annex-standalone' debian/control \
+                         && echo 1 || echo 0)
+
+ifndef SNAPSHOT_BUILD
 # Do use the changelog's version number, rather than making one up.
 export RELEASE_BUILD=1
+endif
+
 
 %:
 	dh $@
 
-# Run this target to build git-annex-standalone.deb
-build-standalone:
+
+# Run this target to build git-annex-standalone*.deb
+build-standalone: dpkg-buildpackage-F
+# Run this target to build git-annex-standalone*.dsc
+build-standalone-dsc: dpkg-buildpackage-S
+
+
+# Standalone build logic/helpers
+ifeq ($(STANDALONE_BUILD),1)
+
+override_dh_auto_build:
+	make linuxstandalone
+
+override_dh_auto_install:
+	: # nothing to do, we just need to copy the beast, as instructed in debian/install
+
+override_dh_fixperms:
+	dh_fixperms -Xld-linux
+
+endif
+
+prep-standalone:
+	debian/rules undo-standalone
+	QUILT_PATCHES=debian/patches QUILT_SERIES=series.standalone-build quilt push -a
+	debian/create-standalone-changelog
+
+undo-standalone:
 	test -e .git
 	git checkout debian/changelog
 	quilt pop -a || true
-	QUILT_PATCHES=debian/patches QUILT_SERIES=series.standalone-build quilt push -a
-	debian/create-standalone-changelog
-	dpkg-buildpackage -rfakeroot
-	quilt pop -a
+
+dpkg-buildpackage%: prep-standalone
+	umask 022; dpkg-buildpackage -rfakeroot $*
+	debian/rules undo-standalone
+
