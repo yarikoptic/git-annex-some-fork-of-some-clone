@@ -22,6 +22,8 @@ of the repository.
 
 [[git-annex]](1)
 
+[[git-annex-matching-options]](1)
+
 [[git-annex-required]](1)
 
 [[git-annex-preferred-content]](1)

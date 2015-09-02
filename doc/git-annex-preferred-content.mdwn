@@ -1,6 +1,6 @@
 # NAME
 
-git-annex-preferred-content - 
+git-annex-preferred-content - expressions to define preferred content
 
 # DESCRIPTION
 
@@ -17,8 +17,8 @@ doing so would violate its required content settings. A repository's
 required content can be configured using `git annex vicfg` or
 `git annex required`.
 
-Preferred content expressions are similar, but not identical to
-the [[git-annex-matching-options]](1), just without the dashes.
+Preferred content expressions are similar to the
+[[git-annex-matching-options]](1) just without the dashes.
 For example:
 
 	exclude=archive/* and (include=*.mp3 or smallerthan=1mb)
@@ -32,7 +32,7 @@ See <https://git-annex.branchable.com/preferred_content/>
 
 When a repository is in one of the standard predefined groups, like "backup"
 and "client", setting its preferred content to "standard" will use a
-built-in preferred content expression developed for that group. 
+built-in preferred content expression developed for that group.
 See <https://git-annex.branchable.com/preferred_content/standard_groups/>
 
 If you have set a groupwanted expression for a group, it will be used
@@ -42,6 +42,8 @@ when a repository in the group has its preferred content set to
 # SEE ALSO
 
 [[git-annex]](1)
+
+[[git-annex-matching-options]](1)
 
 [[git-annex-vicfg]](1)
 
