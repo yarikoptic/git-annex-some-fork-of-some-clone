@@ -6,7 +6,7 @@ Last-Update: 2015-04-20
 
 --- a/debian/control
 +++ b/debian/control
-@@ -3,105 +3,36 @@ Section: utils
+@@ -3,105 +3,37 @@ Section: utils
  Priority: optional
  Build-Depends: 
  	debhelper (>= 9),
@@ -99,6 +99,7 @@ Last-Update: 2015-04-20
 +	libmagic-dev,
 +	zlib1g-dev,
 +	libtinfo-dev,
++	netbase,
  Maintainer: Richard Hartmann <richih@debian.org>
  Standards-Version: 3.9.8
  Vcs-Git: git://git.joeyh.name/git-annex
@@ -123,7 +124,7 @@ Last-Update: 2015-04-20
  Recommends: 
  	lsof,
  	gnupg,
-@@ -120,7 +51,7 @@ Suggests:
+@@ -120,7 +52,7 @@ Suggests:
  	libnss-mdns,
  	uftp,
  Breaks: datalad (< 0.11.1~)
@@ -132,7 +133,7 @@ Last-Update: 2015-04-20
   git-annex allows managing files with git, without checking the file
   contents into git. While that may seem paradoxical, it is useful when
   dealing with files larger than git can currently easily handle, whether due
-@@ -138,3 +69,7 @@ Description: manage files with git, with
+@@ -138,3 +70,7 @@ Description: manage files with git, with
   noticing when files are changed, and automatically committing them
   to git and transferring them to other computers. The git-annex webapp
   makes it easy to set up and use git-annex this way.
