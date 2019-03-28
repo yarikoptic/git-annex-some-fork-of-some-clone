@@ -157,7 +157,7 @@ Last-Update: 2015-04-20
  
  export BUILDER=./Setup
  
-@@ -11,20 +12,34 @@ STANDALONE_BUILD=$(shell grep -qe '^Pack
+@@ -11,20 +12,41 @@ STANDALONE_BUILD=$(shell grep -qe '^Pack
  # Do use the changelog's version number, rather than making one up.
  export RELEASE_BUILD=1
  
@@ -173,16 +173,22 @@ Last-Update: 2015-04-20
 +export BUILDER=stack
 +
 +# verify glibc being old enough
-+LIBC=$(shell ldd /usr/bin/file | awk '/libc.so.6/{print $$3;}'`; )
++LIBC=$(shell ldd /usr/bin/file | awk '/libc.so.6/{print $$3;}'; )
 +LIBC_VERSION=$(shell $(LIBC) | awk '/release/{print $$10;}' | sed -e 's/[,]//g')
 +
++override_dh_auto_clean:
++	echo "LIBC: $(LIBC)   VERSION: $(LIBC_VERSION)"
++	if [ -e stack.yaml_orig ] ; then mv stack.yaml_orig stack.yaml; fi
++	dh_auto_clean  || :  # do not fail if correct stack is not found etc
++	rm -rf $(STACK_ROOT)
++
  override_dh_auto_build:
--	make linuxstandalone GIT_ANNEX_PACKAGE_INSTALL=1
-+	# TODO: check LIBC_VERSION to be <= 2.25
++	dpkg --compare-versions "$(LIBC_VERSION)" lt 2.26
++	if [ ! -e stack.yaml_orig ]; then cp stack.yaml stack.yaml_orig; fi
 +	cp stack-lts-9.9.yaml stack.yaml;
 +	stack setup;
 +	stack build --flag=git-annex:magicmime;
-+	make linuxstandalone BUILDER=stack GIT_ANNEX_PACKAGE_INSTALL=1
+ 	make linuxstandalone GIT_ANNEX_PACKAGE_INSTALL=1
  
  override_dh_auto_install:
  	make install-desktop install-docs DESTDIR=debian/git-annex-standalone
@@ -194,7 +200,7 @@ Last-Update: 2015-04-20
  override_dh_fixperms:
  	dh_fixperms -Xld-linux
  
-@@ -38,4 +53,9 @@ override_dh_strip:
+@@ -38,4 +60,9 @@ override_dh_strip:
  override_dh_makeshlibs:
  	dh_makeshlibs --noscripts
  
