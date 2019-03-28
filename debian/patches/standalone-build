@@ -151,24 +151,50 @@ Last-Update: 2015-04-20
 +/usr/lib/git-annex.linux/git-annex-shell /usr/bin/git-annex-shell
 --- a/debian/rules
 +++ b/debian/rules
-@@ -19,10 +19,14 @@ export RELEASE_BUILD=1
+@@ -1,4 +1,5 @@
+ #!/usr/bin/make -f
++include /usr/share/dpkg/architecture.mk
+ 
+ export BUILDER=./Setup
+ 
+@@ -11,20 +12,34 @@ STANDALONE_BUILD=$(shell grep -qe '^Pack
+ # Do use the changelog's version number, rather than making one up.
+ export RELEASE_BUILD=1
+ 
++export STACK_ROOT=$(PWD)/stack-root
++
+ %:
+ 	dh $@
+ 
+-
+ # Standalone build logic/helpers
  ifeq ($(STANDALONE_BUILD),1)
  
++export BUILDER=stack
++
++# verify glibc being old enough
++LIBC=$(shell ldd /usr/bin/file | awk '/libc.so.6/{print $$3;}'`; )
++LIBC_VERSION=$(shell $(LIBC) | awk '/release/{print $$10;}' | sed -e 's/[,]//g')
++
  override_dh_auto_build:
 -	make linuxstandalone GIT_ANNEX_PACKAGE_INSTALL=1
-+	export STACK_ROOT=$$PWD/stack-root; \
-+	cp stack-lts-9.9.yaml stack.yaml; \
-+	stack setup; \
-+	stack build --flag=git-annex:magicmime; \
++	# TODO: check LIBC_VERSION to be <= 2.25
++	cp stack-lts-9.9.yaml stack.yaml;
++	stack setup;
++	stack build --flag=git-annex:magicmime;
 +	make linuxstandalone BUILDER=stack GIT_ANNEX_PACKAGE_INSTALL=1
  
  override_dh_auto_install:
--	make install-desktop install-docs DESTDIR=debian/git-annex-standalone
-+	make install-desktop install-docs BUILDER=stack DESTDIR=debian/git-annex-standalone
+ 	make install-desktop install-docs DESTDIR=debian/git-annex-standalone
  	# bins are linked into place, as instructed in debian/install and debian/links
  
++override_dh_auto_test:
++	PATH=$$(stack path --compiler-bin):$$PATH dh_auto_test
++
  override_dh_fixperms:
-@@ -38,4 +42,9 @@ override_dh_strip:
+ 	dh_fixperms -Xld-linux
+ 
+@@ -38,4 +53,9 @@ override_dh_strip:
  override_dh_makeshlibs:
  	dh_makeshlibs --noscripts
  
